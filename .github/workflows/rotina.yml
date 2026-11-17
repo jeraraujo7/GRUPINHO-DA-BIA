@@ -13,8 +13,10 @@ on:
   workflow_dispatch:
     inputs:
       acao:
-        description: "planejar ou postar"
-        default: postar
+        description: "teste (só mostra as 5 legendas no log), planejar ou postar"
+        type: choice
+        options: [teste, planejar, postar]
+        default: teste
 
 permissions:
   contents: write
@@ -25,7 +27,8 @@ concurrency:
 
 jobs:
   rodar:
-    if: vars.ROTINA_LIGADA == 'sim'
+    # agendado: só com ROTINA_LIGADA = sim. Manual: sempre (para testar antes de ligar).
+    if: vars.ROTINA_LIGADA == 'sim' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       SHOPEE_APP_ID: ${{ secrets.SHOPEE_APP_ID }}
@@ -55,6 +58,7 @@ jobs:
       - name: Rodar
         run: python -m achadinhos ${{ steps.acao.outputs.acao }}
       - name: Guardar a fila e o histórico
+        if: steps.acao.outputs.acao != 'teste'
         run: |
           git config user.name "achadinhos-bot"
           git config user.email "achadinhos-bot@users.noreply.github.com"

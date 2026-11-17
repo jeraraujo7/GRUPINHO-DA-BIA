@@ -83,6 +83,8 @@ O arquivo `.github/workflows/rotina.yml` roda no GitHub Actions: às 8h monta a 
 2. as chaves estiverem cadastradas em **Settings > Secrets and variables > Actions > Secrets**, que é um formulário seguro do próprio GitHub;
 3. a variável `ROTINA_LIGADA` estiver como `sim` na aba **Variables** do mesmo lugar. Para pausar tudo, basta trocar para `nao`.
 
+Para o teste com 5 ofertas reais antes de ligar: aba **Actions > Rotina de ofertas > Run workflow**, ação `teste`. As legendas aparecem no log e nada é enviado ao grupo.
+
 Chaves usadas:
 
 | Nome | De onde vem |
