@@ -1,0 +1,63 @@
+name: Rotina de ofertas
+
+# Horários em UTC. Brasília = UTC-3.
+#   11:00 UTC (08h) -> planejar a fila do dia
+#   a cada 30 min das 12:00 às 00:30 UTC (09h às 21h30) -> postar a próxima oferta
+# Só roda com a variável do repositório ROTINA_LIGADA = sim
+# (Settings > Secrets and variables > Actions > Variables).
+on:
+  schedule:
+    - cron: "0 11 * * *"
+    - cron: "*/30 12-23 * * *"
+    - cron: "0,30 0 * * *"
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: "planejar ou postar"
+        default: postar
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rotina-ofertas
+  cancel-in-progress: false
+
+jobs:
+  rodar:
+    if: vars.ROTINA_LIGADA == 'sim'
+    runs-on: ubuntu-latest
+    env:
+      SHOPEE_APP_ID: ${{ secrets.SHOPEE_APP_ID }}
+      SHOPEE_SECRET: ${{ secrets.SHOPEE_SECRET }}
+      ML_ACCESS_TOKEN: ${{ secrets.ML_ACCESS_TOKEN }}
+      ML_LINK_API_URL: ${{ secrets.ML_LINK_API_URL }}
+      ML_LINK_API_KEY: ${{ secrets.ML_LINK_API_KEY }}
+      ZAPI_INSTANCE_ID: ${{ secrets.ZAPI_INSTANCE_ID }}
+      ZAPI_TOKEN: ${{ secrets.ZAPI_TOKEN }}
+      ZAPI_CLIENT_TOKEN: ${{ secrets.ZAPI_CLIENT_TOKEN }}
+      WHATSAPP_GRUPO_ID: ${{ secrets.WHATSAPP_GRUPO_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Escolher a ação
+        id: acao
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "acao=${{ inputs.acao }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.schedule }}" = "0 11 * * *" ]; then
+            echo "acao=planejar" >> "$GITHUB_OUTPUT"
+          else
+            echo "acao=postar" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Rodar
+        run: python -m achadinhos ${{ steps.acao.outputs.acao }}
+      - name: Guardar a fila e o histórico
+        run: |
+          git config user.name "achadinhos-bot"
+          git config user.email "achadinhos-bot@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || git commit -m "Rotina: ${{ steps.acao.outputs.acao }}"
+          git push

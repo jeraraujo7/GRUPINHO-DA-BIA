@@ -1,0 +1,82 @@
+"""Mercado Livre: busca de produtos e link de afiliado.
+
+Busca e preço: API pública do Mercado Livre (api.mercadolibre.com), que hoje
+pede um token de acesso de aplicativo (ML_ACCESS_TOKEN).
+
+Link de afiliado: o Mercado Livre não publica uma API aberta para gerar o link
+(o caminho oficial é o "Gerador de Links" no Portal do Afiliado). Por isso o
+gerador fica configurável:
+  ML_LINK_API_URL  endpoint que recebe {"url": "<produto>"} e devolve o link
+  ML_LINK_API_KEY  chave desse serviço (enviada no cabeçalho X-API-Key)
+Sem ele, as ofertas do Mercado Livre são encontradas mas não são postadas.
+"""
+
+from __future__ import annotations
+
+import os
+import urllib.parse
+
+from .oferta import Oferta, http_json
+
+API = "https://api.mercadolibre.com"
+
+
+def configurada() -> bool:
+    return bool(os.environ.get("ML_ACCESS_TOKEN"))
+
+
+def gera_link() -> bool:
+    return bool(os.environ.get("ML_LINK_API_URL"))
+
+
+def _cab() -> dict:
+    tok = os.environ.get("ML_ACCESS_TOKEN")
+    return {"Authorization": f"Bearer {tok}"} if tok else {}
+
+
+def _para_oferta(r: dict, palavra_chave: str = "") -> Oferta | None:
+    preco = r.get("price")
+    antigo = r.get("original_price") or preco
+    if not preco or r.get("available_quantity", 1) == 0:
+        return None
+    return Oferta(
+        loja="mercadolivre",
+        id=r["id"],
+        nome=(r.get("title") or "").strip(),
+        preco=float(preco),
+        preco_antigo=float(antigo),
+        link="",  # preenchido por link_afiliado()
+        imagem=(r.get("thumbnail") or "").replace("-I.jpg", "-O.jpg"),
+        avaliacao=0.0,
+        vendas=int(r.get("sold_quantity") or 0),
+        palavra_chave=palavra_chave,
+        extra={"permalink": r.get("permalink", ""), "sem_avaliacao": True},
+    )
+
+
+def buscar(palavra_chave: str, limite: int = 20) -> list[Oferta]:
+    q = urllib.parse.urlencode({"q": palavra_chave, "limit": limite})
+    dados = http_json(f"{API}/sites/MLB/search?{q}", cabecalhos=_cab())
+    return [o for r in dados.get("results", []) if (o := _para_oferta(r, palavra_chave))]
+
+
+def link_afiliado(permalink: str) -> str:
+    url = os.environ["ML_LINK_API_URL"]
+    cab = {}
+    if os.environ.get("ML_LINK_API_KEY"):
+        cab["X-API-Key"] = os.environ["ML_LINK_API_KEY"]
+    resp = http_json(url, metodo="POST", corpo={"url": permalink}, cabecalhos=cab)
+    link = resp.get("final_url") or resp.get("affiliate_url") or resp.get("link")
+    if not link:
+        raise RuntimeError(f"gerador de link do Mercado Livre não devolveu link: {str(resp)[:200]}")
+    return link
+
+
+def preco_atual(oferta: Oferta) -> Oferta | None:
+    r = http_json(f"{API}/items/{oferta.id}", cabecalhos=_cab())
+    if r.get("status") != "active":
+        return None
+    nova = _para_oferta(r, oferta.palavra_chave)
+    if nova:
+        nova.link = oferta.link
+    return nova
