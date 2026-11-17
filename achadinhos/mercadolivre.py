@@ -1,7 +1,9 @@
 """Mercado Livre: busca de produtos e link de afiliado.
 
-Busca e preço: API pública do Mercado Livre (api.mercadolibre.com), que hoje
-pede um token de acesso de aplicativo (ML_ACCESS_TOKEN).
+Busca e preço: API do Mercado Livre (api.mercadolibre.com), com o acesso do
+aplicativo criado em developers.mercadolivre.com.br:
+  ML_CLIENT_ID, ML_CLIENT_SECRET  -> o token (que vence a cada 6h) é renovado sozinho
+  ML_ACCESS_TOKEN                 -> alternativa: token fixo, se preferir
 
 Link de afiliado: o Mercado Livre não publica uma API aberta para gerar o link
 (o caminho oficial é o "Gerador de Links" no Portal do Afiliado). Por isso o
@@ -13,7 +15,10 @@ Sem ele, as ofertas do Mercado Livre são encontradas mas não são postadas.
 
 from __future__ import annotations
 
+import json
 import os
+import time
+import urllib.request
 import urllib.parse
 
 from .oferta import Oferta, http_json
@@ -21,8 +26,33 @@ from .oferta import Oferta, http_json
 API = "https://api.mercadolibre.com"
 
 
+_token = {"valor": "", "vence": 0.0}
+
+
 def configurada() -> bool:
-    return bool(os.environ.get("ML_ACCESS_TOKEN"))
+    return bool(os.environ.get("ML_ACCESS_TOKEN")
+                or (os.environ.get("ML_CLIENT_ID") and os.environ.get("ML_CLIENT_SECRET")))
+
+
+def token() -> str:
+    if os.environ.get("ML_ACCESS_TOKEN"):
+        return os.environ["ML_ACCESS_TOKEN"]
+    if not (os.environ.get("ML_CLIENT_ID") and os.environ.get("ML_CLIENT_SECRET")):
+        return ""
+    if time.time() < _token["vence"]:
+        return _token["valor"]
+    corpo = urllib.parse.urlencode({
+        "grant_type": "client_credentials",
+        "client_id": os.environ["ML_CLIENT_ID"],
+        "client_secret": os.environ["ML_CLIENT_SECRET"],
+    }).encode()
+    req = urllib.request.Request(f"{API}/oauth/token", data=corpo, method="POST", headers={
+        "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        resp = json.loads(r.read().decode())
+    _token["valor"] = resp["access_token"]
+    _token["vence"] = time.time() + int(resp.get("expires_in", 21600)) - 300  # renova 5 min antes
+    return _token["valor"]
 
 
 def gera_link() -> bool:
@@ -30,7 +60,7 @@ def gera_link() -> bool:
 
 
 def _cab() -> dict:
-    tok = os.environ.get("ML_ACCESS_TOKEN")
+    tok = token()
     return {"Authorization": f"Bearer {tok}"} if tok else {}
 
 

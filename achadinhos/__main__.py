@@ -23,7 +23,7 @@ from . import legenda, mercadolivre, rotina, shopee, whatsapp
 def cmd_status(cfg, _):
     print(f"Nicho: {cfg['nicho']}")
     print(f"Shopee .............. {'ok' if shopee.configurada() else 'faltam SHOPEE_APP_ID / SHOPEE_SECRET'}")
-    print(f"Mercado Livre busca . {'ok' if mercadolivre.configurada() else 'falta ML_ACCESS_TOKEN'}")
+    print(f"Mercado Livre busca . {'ok' if mercadolivre.configurada() else 'faltam ML_CLIENT_ID / ML_CLIENT_SECRET'}")
     print(f"Mercado Livre link .. {'ok' if mercadolivre.gera_link() else 'falta ML_LINK_API_URL'}")
     print(f"WhatsApp (Z-API) .... {'ok' if whatsapp.configurado() else 'faltam ZAPI_* / WHATSAPP_GRUPO_ID'}")
 

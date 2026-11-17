@@ -101,7 +101,7 @@ Chaves usadas:
 | Nome | De onde vem |
 |---|---|
 | `SHOPEE_APP_ID`, `SHOPEE_SECRET` | Shopee Afiliados > Open API |
-| `ML_ACCESS_TOKEN` | aplicativo criado em developers.mercadolivre.com.br |
+| `ML_CLIENT_ID`, `ML_CLIENT_SECRET` | aplicativo criado em developers.mercadolivre.com.br (o acesso de 6h é renovado sozinho) |
 | `ML_LINK_API_URL`, `ML_LINK_API_KEY` | serviço que gera o link de afiliado do Mercado Livre (veja abaixo) |
 | `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` | painel da Z-API |
 | `WHATSAPP_GRUPO_ID` | id do grupo, achado com `python -m achadinhos grupos` |
