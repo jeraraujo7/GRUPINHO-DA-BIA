@@ -4,16 +4,18 @@ Grupo de ofertas no WhatsApp com links de afiliado. O Claude busca os produtos e
 
 ## Como a rotina funciona
 
-Todo dia, no horário definido:
+Todo dia, das 7h às 22h:
 
-1. **Buscar as ofertas** nas lojas em que há conta de afiliado, dentro do nicho escolhido.
-2. **Filtrar** por desconto mínimo (por exemplo, 20% ou mais), avaliação boa e produto em estoque.
-3. **Gerar o link de afiliado** de cada produto.
-4. **Escrever a legenda** curta, com preço antigo, preço novo e o link:
-   > A TV que faltava na sua sala!
-   > De R$ 2.799 por R$ 1.899
-   > https://link-de-afiliado
-5. **Postar no grupo**, espaçando as mensagens ao longo do dia (por exemplo, uma por hora).
+1. **A cada 30 minutos, buscar as ofertas** em todo o setor de casa e cozinha (utensílios, eletrodomésticos, cama, mesa e banho, limpeza, organização, decoração, iluminação, móveis), nas categorias e em cerca de 80 palavras-chave.
+2. **Filtrar:** fica tudo que estiver com desconto acima de 5%, de R$ 10 a R$ 100.000, em estoque. O resultado é a "vitrine", ordenada pelo maior desconto (vendas e avaliação desempatam).
+3. **A cada 5 minutos, postar** a melhor oferta da vitrine:
+   - confere o preço na hora; se o desconto caiu para 5% ou menos, ou o produto sumiu, pula para a próxima;
+   - gera o link de afiliado;
+   - escreve a legenda curta, com preço antigo, preço novo e o link:
+     > A TV que faltava na sua sala!
+     > De ~R$ 2.799,00~ por *R$ 1.899,00* (32% OFF)
+     > 👉 https://link-de-afiliado
+4. **Repetição:** o mesmo produto pode voltar, inclusive no dia seguinte. Ele só não repete dentro de 12 horas, a não ser que o preço tenha caído pelo menos mais 3% (e já tenha passado 1 hora).
 
 ## O que precisa ser providenciado
 
@@ -36,13 +38,17 @@ As chaves são cadastradas por um formulário seguro do ambiente, nunca coladas 
 
 - **Preço certo:** conferir o preço na hora de postar. Oferta com preço errado gera reclamação e pode cair no Código de Defesa do Consumidor.
 - **Aviso de afiliado:** informar na descrição do grupo que os links são de afiliado, como recomenda o CONAR.
-- **Postagem direta:** não há aprovação manual. A segurança vem dos filtros e da conferência de preço na hora de cada envio: se o preço subiu mais de 3%, o desconto caiu abaixo do mínimo ou o produto sumiu, a oferta é cancelada e não vai para o grupo.
+- **Postagem direta:** não há aprovação manual. A segurança vem da conferência de preço na hora de cada envio: a legenda sempre sai com o preço do momento, e a oferta é pulada se o desconto caiu para 5% ou menos ou o produto sumiu.
+- **Volume e bloqueio:** a cada 5 minutos das 7h às 22h são até 180 mensagens por dia. É bastante para um serviço não oficial como a Z-API, e aumenta o risco de o WhatsApp bloquear o chip. Se acontecer, dá para aumentar `postar_a_cada_minutos` no `config.json`.
 
 ## Decisões tomadas
 
 | Pergunta | Decisão |
 |---|---|
-| Nicho | Casa e cozinha |
+| Nicho | Casa e cozinha, todo o setor (não só alguns produtos) |
+| Filtro | Desconto acima de 5%, de R$ 10 a R$ 100.000 |
+| Ritmo | Das 7h às 22h: busca a cada 30 min, posta a cada 5 min |
+| Repetição | Pode repetir; espera 12h, ou menos se o preço cair |
 | Lojas | Shopee e Mercado Livre |
 | Canal | WhatsApp pela Z-API, com um chip só para o grupo |
 | Aprovação | Posta direto, com conferência de preço na hora |
@@ -50,18 +56,21 @@ As chaves são cadastradas por um formulário seguro do ambiente, nunca coladas 
 ## Como funciona o código
 
 ```
-config.json              nicho, palavras-chave, filtros e horários
+config.json              palavras-chave, categorias, filtros e horários
 achadinhos/shopee.py     busca na Shopee Afiliados (já devolve o link de afiliado)
 achadinhos/mercadolivre.py  busca no Mercado Livre e gera o link de afiliado
 achadinhos/legenda.py    legenda curta: gancho, nome, De/Por e link
 achadinhos/whatsapp.py   envio pela Z-API (foto + legenda)
-achadinhos/rotina.py     planejar a fila do dia e postar uma oferta por vez
-data/fila/AAAA-MM-DD.json   fila do dia (status de cada oferta)
-data/historico.json      o que já foi postado (não repete por 14 dias)
+achadinhos/rotina.py     buscar (vitrine), postar a melhor oferta, ficar ligado o dia todo
+data/vitrine.json        ofertas da última busca (refeita a cada 30 min, fora do git)
+data/historico.json      última vez que cada produto foi postado e a que preço
+data/postagens/AAAA-MM-DD.json   tudo o que foi postado no dia
 .github/workflows/rotina.yml  agenda automática
 ```
 
-Filtros atuais (em `config.json`): desconto de 20% ou mais, avaliação 4,5 ou mais, pelo menos 50 vendas, até R$ 800. São 10 ofertas por dia, espalhadas entre 9h e 21h.
+Tudo isso é ajustável no `config.json` (`filtros` e `agenda`).
+
+**Categorias:** no Mercado Livre a busca já varre as categorias Casa, Móveis e Decoração (`MLB1574`) e Eletrodomésticos (`MLB5726`). Na Shopee, depois que o acesso for liberado, rode `python -m achadinhos categorias` e coloque os ids que mais aparecem em `shopee_categorias`. Enquanto isso, a Shopee é varrida pelas palavras-chave.
 
 Comandos:
 
@@ -70,14 +79,16 @@ python -m achadinhos status       # quais chaves estão configuradas
 python -m achadinhos teste        # 5 ofertas reais, preço conferido, só mostra as legendas
 python -m achadinhos teste --enviar --destino ID_DO_GRUPO_DE_TESTE
 python -m achadinhos grupos       # lista os grupos do chip, para achar o id
-python -m achadinhos planejar     # monta a fila do dia
-python -m achadinhos postar       # posta a próxima oferta cujo horário chegou
+python -m achadinhos buscar       # atualiza a vitrine
+python -m achadinhos postar       # posta a melhor oferta agora
+python -m achadinhos rodar        # fica ligado até as 22h (busca a cada 30 min, posta a cada 5)
+python -m achadinhos categorias   # ids de categoria da Shopee para casa e cozinha
 python -m unittest discover -s tests -t .
 ```
 
 ## Agenda automática
 
-O arquivo `.github/workflows/rotina.yml` roda no GitHub Actions: às 8h monta a fila e, a cada 30 minutos entre 9h e 21h30, posta a próxima oferta. Ele só liga quando:
+O arquivo `.github/workflows/rotina.yml` roda no GitHub Actions (gratuito, porque o repositório é público). Como cada execução do GitHub dura no máximo 6 horas, o dia é dividido em 3 turnos que começam às 7h, 12h e 17h. Cada turno fica ligado por 5h30, e o seguinte espera na fila e assume logo depois. O GitHub às vezes atrasa o início em alguns minutos. A agenda só liga quando:
 
 1. o código estiver no branch `main` (o GitHub só agenda tarefas no branch principal);
 2. as chaves estiverem cadastradas em **Settings > Secrets and variables > Actions > Secrets**, que é um formulário seguro do próprio GitHub;

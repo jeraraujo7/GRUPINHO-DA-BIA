@@ -54,10 +54,23 @@ def _para_oferta(r: dict, palavra_chave: str = "") -> Oferta | None:
     )
 
 
-def buscar(palavra_chave: str, limite: int = 20) -> list[Oferta]:
-    q = urllib.parse.urlencode({"q": palavra_chave, "limit": limite})
-    dados = http_json(f"{API}/sites/MLB/search?{q}", cabecalhos=_cab())
-    return [o for r in dados.get("results", []) if (o := _para_oferta(r, palavra_chave))]
+def buscar(palavra_chave: str = "", categoria: str | None = None,
+           paginas: int = 2, limite: int = 50) -> list[Oferta]:
+    """Busca por palavra-chave ou por categoria (ex.: MLB1574 Casa, Móveis e Decoração)."""
+    rotulo = f"categoria {categoria}" if categoria else palavra_chave
+    ofertas = []
+    for pagina in range(paginas):
+        params = {"limit": limite, "offset": pagina * limite}
+        if categoria:
+            params["category"] = categoria
+        if palavra_chave:
+            params["q"] = palavra_chave
+        dados = http_json(f"{API}/sites/MLB/search?{urllib.parse.urlencode(params)}", cabecalhos=_cab())
+        resultados = dados.get("results", [])
+        ofertas += [o for r in resultados if (o := _para_oferta(r, rotulo))]
+        if len(resultados) < limite:
+            break
+    return ofertas
 
 
 def link_afiliado(permalink: str) -> str:

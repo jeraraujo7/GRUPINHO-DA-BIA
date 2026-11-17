@@ -19,11 +19,11 @@ URL = os.environ.get("SHOPEE_URL", "https://open-api.affiliate.shopee.com.br/gra
 
 CAMPOS = """
   itemId productName priceMin priceMax priceDiscountRate ratingStar sales
-  imageUrl offerLink productLink shopName commissionRate periodEndTime
+  imageUrl offerLink productLink shopName commissionRate periodEndTime productCatIds
 """
 
 # sortType: 1 relevância, 2 mais vendidos, 3 maior preço, 4 menor preço, 5 maior comissão
-BUSCA = "query{productOfferV2(keyword:%s,sortType:2,page:%d,limit:%d){nodes{%s}pageInfo{page limit hasNextPage}}}"
+BUSCA = "query{productOfferV2(%s,sortType:2,page:%d,limit:%d){nodes{%s}pageInfo{page limit hasNextPage}}}"
 POR_ITEM = "query{productOfferV2(itemId:%d,limit:1){nodes{%s}}}"
 
 
@@ -81,18 +81,24 @@ def _para_oferta(n: dict, palavra_chave: str = "") -> Oferta | None:
             "fim_oferta": int(n.get("periodEndTime") or 0),
             "loja_nome": n.get("shopName") or "",
             "comissao": n.get("commissionRate") or "",
+            "categorias": n.get("productCatIds") or [],
         },
     )
 
 
-def buscar(palavra_chave: str, paginas: int = 1, limite: int = 20) -> list[Oferta]:
+def buscar(palavra_chave: str = "", categoria: int | None = None,
+           paginas: int = 2, limite: int = 50) -> list[Oferta]:
+    """Busca por palavra-chave ou por id de categoria (nível 1, 2 ou 3)."""
+    if categoria:
+        filtro, rotulo = f"productCatId:{int(categoria)}", f"categoria {categoria}"
+    else:
+        filtro, rotulo = f"keyword:{json_compacto(palavra_chave)}", palavra_chave
     ofertas = []
-    termo = json_compacto(palavra_chave)  # string GraphQL com aspas e escape
     for pagina in range(1, paginas + 1):
-        dados = _consulta(BUSCA % (termo, pagina, limite, CAMPOS))
+        dados = _consulta(BUSCA % (filtro, pagina, limite, CAMPOS))
         bloco = dados.get("productOfferV2") or {}
         for n in bloco.get("nodes") or []:
-            o = _para_oferta(n, palavra_chave)
+            o = _para_oferta(n, rotulo)
             if o and o.link:
                 ofertas.append(o)
         if not (bloco.get("pageInfo") or {}).get("hasNextPage"):

@@ -1,28 +1,29 @@
 name: Rotina de ofertas
 
-# Horários em UTC. Brasília = UTC-3.
-#   11:00 UTC (08h) -> planejar a fila do dia
-#   a cada 30 min das 12:00 às 00:30 UTC (09h às 21h30) -> postar a próxima oferta
+# O robô fica ligado das 7h às 22h (Brasília), buscando ofertas a cada 30 min
+# e postando uma a cada 5 min. Um job do GitHub dura no máximo 6h, então o dia
+# é dividido em 3 turnos que começam às 7h, 12h e 17h (10h, 15h e 20h UTC).
+# Se um turno atrasar, o seguinte espera na fila (concurrency) e assume em seguida.
 # Só roda com a variável do repositório ROTINA_LIGADA = sim
 # (Settings > Secrets and variables > Actions > Variables).
 on:
   schedule:
-    - cron: "0 11 * * *"
-    - cron: "*/30 12-23 * * *"
-    - cron: "0,30 0 * * *"
+    - cron: "0 10 * * *"
+    - cron: "0 15 * * *"
+    - cron: "0 20 * * *"
   workflow_dispatch:
     inputs:
       acao:
-        description: "teste (só mostra as 5 legendas no log), planejar ou postar"
+        description: "teste (só mostra 5 legendas no log), buscar, postar ou rodar"
         type: choice
-        options: [teste, planejar, postar]
+        options: [teste, buscar, postar, rodar]
         default: teste
 
 permissions:
   contents: write
 
 concurrency:
-  group: rotina-ofertas
+  group: rotina-${{ inputs.acao == 'teste' && 'teste' || 'ofertas' }}
   cancel-in-progress: false
 
 jobs:
@@ -30,6 +31,7 @@ jobs:
     # agendado: só com ROTINA_LIGADA = sim. Manual: sempre (para testar antes de ligar).
     if: vars.ROTINA_LIGADA == 'sim' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 350
     env:
       SHOPEE_APP_ID: ${{ secrets.SHOPEE_APP_ID }}
       SHOPEE_SECRET: ${{ secrets.SHOPEE_SECRET }}
@@ -45,23 +47,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Escolher a ação
-        id: acao
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "acao=${{ inputs.acao }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event.schedule }}" = "0 11 * * *" ]; then
-            echo "acao=planejar" >> "$GITHUB_OUTPUT"
-          else
-            echo "acao=postar" >> "$GITHUB_OUTPUT"
-          fi
       - name: Rodar
-        run: python -m achadinhos ${{ steps.acao.outputs.acao }}
-      - name: Guardar a fila e o histórico
-        if: steps.acao.outputs.acao != 'teste'
+        run: |
+          ACAO="${{ inputs.acao || 'rodar' }}"
+          echo "ACAO=$ACAO" >> "$GITHUB_ENV"
+          if [ "$ACAO" = "rodar" ]; then
+            # 5h30 por turno, para caber no limite de 6h do GitHub
+            python -m achadinhos rodar --horas 5.5
+          else
+            python -m achadinhos "$ACAO"
+          fi
+      - name: Guardar vitrine, histórico e postagens
+        if: always() && env.ACAO != 'teste'
         run: |
           git config user.name "achadinhos-bot"
           git config user.email "achadinhos-bot@users.noreply.github.com"
           git add data/
-          git diff --cached --quiet || git commit -m "Rotina: ${{ steps.acao.outputs.acao }}"
-          git push
+          git diff --cached --quiet && exit 0
+          git commit -m "Rotina: $ACAO"
+          for i in 1 2 3; do git pull --rebase -q && git push && break; sleep 5; done

@@ -27,10 +27,14 @@ class Oferta:
         return f"{self.loja}:{self.id}"
 
     @property
-    def desconto(self) -> int:
+    def desconto_exato(self) -> float:
         if self.preco_antigo <= 0 or self.preco >= self.preco_antigo:
-            return 0
-        return round((1 - self.preco / self.preco_antigo) * 100)
+            return 0.0
+        return round((1 - self.preco / self.preco_antigo) * 100, 2)
+
+    @property
+    def desconto(self) -> int:
+        return round(self.desconto_exato)
 
     def para_dict(self) -> dict:
         return asdict(self)

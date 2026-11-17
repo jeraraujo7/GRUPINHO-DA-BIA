@@ -1,13 +1,14 @@
-"""Rotina do dia: planejar a fila de ofertas e postar uma por vez.
+"""Rotina do dia.
 
-  planejar  -> busca nas lojas, filtra, escolhe as ofertas do dia e distribui os horários
-  postar    -> posta a próxima oferta cujo horário já chegou, conferindo o preço na hora
+  buscar  -> varre casa e cozinha nas lojas e grava a vitrine (data/vitrine.json)
+  postar  -> pega a melhor oferta da vitrine, confere o preço na hora e posta
+  rodar   -> fica ligado das 7h às 22h: busca a cada 30 min e posta a cada 5 min
 """
 
 from __future__ import annotations
 
 import json
-import random
+import math
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -38,142 +39,100 @@ def _gravar(caminho: Path, dados) -> None:
     caminho.write_text(json.dumps(dados, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
-def caminho_fila(dia: str) -> Path:
-    return DADOS / "fila" / f"{dia}.json"
+def caminho_vitrine() -> Path:
+    return DADOS / "vitrine.json"
 
 
 def caminho_historico() -> Path:
     return DADOS / "historico.json"
 
 
+def caminho_registro(dia: str) -> Path:
+    return DADOS / "postagens" / f"{dia}.json"
+
+
+def agora_em(cfg: dict) -> datetime:
+    return datetime.now(ZoneInfo(cfg["agenda"]["fuso"]))
+
+
 # ---------------------------------------------------------------- filtros
 
-def passa_filtros(o: Oferta, f: dict, agora_ts: float | None = None) -> str | None:
+def passa_filtros(o: Oferta, f: dict) -> str | None:
     """None se a oferta serve; senão o motivo da recusa."""
-    agora_ts = agora_ts or time.time()
     if not o.link and o.loja == "shopee":
         return "sem link"
-    if o.desconto < f.get("desconto_minimo", 0):
-        return f"desconto {o.desconto}%"
+    if o.desconto_exato <= f.get("desconto_acima_de", 0):
+        return f"desconto {o.desconto_exato:.1f}%"
+    if not (f.get("preco_minimo", 0) <= o.preco <= f.get("preco_maximo", float("inf"))):
+        return f"preço {o.preco}"
     if not o.extra.get("sem_avaliacao") and o.avaliacao < f.get("avaliacao_minima", 0):
         return f"avaliação {o.avaliacao}"
     if o.vendas < f.get("vendas_minimas", 0):
         return f"{o.vendas} vendas"
-    if o.preco > f.get("preco_maximo", float("inf")):
-        return f"preço {o.preco}"
-    fim = o.extra.get("fim_oferta") or 0
-    if fim and fim < agora_ts + 12 * 3600:
-        return "oferta acaba em menos de 12h"
     return None
 
 
 def pontuacao(o: Oferta) -> float:
-    return o.desconto * 2 + min(o.vendas, 5000) / 250 + o.avaliacao * 3
+    """Desconto pesa mais; vendas e avaliação desempatam."""
+    return o.desconto_exato * 2 + math.log10(1 + o.vendas) * 4 + o.avaliacao
 
 
-# ---------------------------------------------------------------- planejar
-
-def horarios_do_dia(dia: datetime, n: int, inicio: int, fim: int, semente: int) -> list[datetime]:
-    """n horários espalhados entre inicio e fim, com alguns minutos de variação."""
-    rnd = random.Random(semente)
-    total = (fim - inicio) * 60
-    passo = total / max(n, 1)
-    base = dia.replace(hour=inicio, minute=0, second=0, microsecond=0)
-    saida = []
-    for i in range(n):
-        minuto = int(i * passo + passo / 2 + rnd.uniform(-passo / 4, passo / 4))
-        saida.append(base + timedelta(minutes=max(0, min(total - 1, minuto))))
-    return saida
-
+# ---------------------------------------------------------------- buscar
 
 def lojas_ativas(cfg: dict) -> list[str]:
     return [nome for nome, ligada in cfg.get("lojas", {}).items()
             if ligada and LOJAS[nome].configurada()]
 
 
-def escolher(candidatas: list[Oferta], n: int, max_por_termo: int = 2) -> list[Oferta]:
-    """As melhores, alternando lojas e sem repetir muito o mesmo tipo de produto."""
-    por_loja: dict[str, list[Oferta]] = {}
-    for o in sorted(candidatas, key=pontuacao, reverse=True):
-        por_loja.setdefault(o.loja, []).append(o)
-    escolhidas, por_termo, vistos = [], {}, set()
-    while len(escolhidas) < n and any(por_loja.values()):
-        for loja in list(por_loja):
-            fila = por_loja[loja]
-            while fila:
-                o = fila.pop(0)
-                if o.chave in vistos or por_termo.get(o.palavra_chave, 0) >= max_por_termo:
-                    continue
-                vistos.add(o.chave)
-                por_termo[o.palavra_chave] = por_termo.get(o.palavra_chave, 0) + 1
-                escolhidas.append(o)
-                break
-            if len(escolhidas) >= n:
-                break
-    return escolhidas
-
-
-def selecionar(cfg: dict, agora: datetime, n: int, termos_por_loja: int = 6,
-               log=print) -> list[Oferta]:
-    """Busca, filtra e escolhe as n melhores ofertas, já com link de afiliado."""
-    dia = agora.strftime("%Y-%m-%d")
-    filtros = cfg["filtros"]
-
-    historico = _ler(caminho_historico(), {})
-    limite = (agora - timedelta(days=cfg["agenda"]["nao_repetir_por_dias"])).strftime("%Y-%m-%d")
-
+def buscar(cfg: dict, agora: datetime | None = None, log=print) -> list[Oferta]:
+    """Varre todas as categorias e palavras-chave e grava a vitrine."""
+    agora = agora or agora_em(cfg)
     lojas = lojas_ativas(cfg)
     if not lojas:
         raise RuntimeError("nenhuma loja configurada (faltam as chaves de acesso)")
 
-    rnd = random.Random(dia)
-    candidatas: list[Oferta] = []
+    melhores: dict[str, Oferta] = {}
     for loja in lojas:
-        termos = rnd.sample(cfg["palavras_chave"], min(termos_por_loja, len(cfg["palavras_chave"])))
-        for termo in termos:
+        mod = LOJAS[loja]
+        buscas = [{"categoria": c} for c in cfg.get(f"{loja}_categorias", [])]
+        buscas += [{"palavra_chave": t} for t in cfg["palavras_chave"]]
+        total = aprovadas = 0
+        for b in buscas:
             try:
-                achadas = LOJAS[loja].buscar(termo)
-            except Exception as e:  # uma busca ruim não derruba o dia
-                log(f"  ! {loja} '{termo}': {e}")
+                achadas = mod.buscar(**b)
+            except Exception as e:  # uma busca ruim não derruba as outras
+                log(f"  ! {loja} {b}: {e}")
                 continue
-            boas = 0
+            total += len(achadas)
             for o in achadas:
-                if historico.get(o.chave, "") >= limite:
-                    continue
-                if passa_filtros(o, filtros) is None:
-                    candidatas.append(o)
-                    boas += 1
-            log(f"  {loja} '{termo}': {len(achadas)} achadas, {boas} passaram nos filtros")
+                if passa_filtros(o, cfg["filtros"]) is None:
+                    atual = melhores.get(o.chave)
+                    if atual is None or o.preco < atual.preco:
+                        melhores[o.chave] = o
+                        aprovadas += 1
+        log(f"  {loja}: {len(buscas)} buscas, {total} produtos, {aprovadas} com desconto")
 
-    escolhidas = []
-    for o in escolher(candidatas, n * 2):
-        if o.loja == "mercadolivre":
-            if not mercadolivre.gera_link():
-                continue
-            try:
-                o.link = mercadolivre.link_afiliado(o.extra["permalink"])
-            except Exception as e:
-                log(f"  ! link ML {o.id}: {e}")
-                continue
-        escolhidas.append(o)
-        if len(escolhidas) >= n:
-            break
-    return escolhidas
+    ofertas = sorted(melhores.values(), key=pontuacao, reverse=True)
+    _gravar(caminho_vitrine(), {"atualizada_em": agora.isoformat(),
+                                "ofertas": [o.para_dict() for o in ofertas]})
+    log(f"Vitrine: {len(ofertas)} ofertas")
+    return ofertas
 
 
-def planejar(cfg: dict, agora: datetime | None = None, n: int | None = None,
-             log=print) -> list[dict]:
-    fuso = ZoneInfo(cfg["agenda"]["fuso"])
-    agora = agora or datetime.now(fuso)
-    dia = agora.strftime("%Y-%m-%d")
-    escolhidas = selecionar(cfg, agora, n or cfg["agenda"]["ofertas_por_dia"], log=log)
-    horas = horarios_do_dia(agora, len(escolhidas), cfg["agenda"]["hora_inicio"],
-                            cfg["agenda"]["hora_fim"], semente=int(dia.replace("-", "")))
-    fila = [{"horario": h.isoformat(), "status": "pendente", "oferta": o.para_dict()}
-            for h, o in zip(horas, escolhidas)]
-    _gravar(caminho_fila(dia), fila)
-    log(f"Fila de {dia}: {len(fila)} ofertas")
-    return fila
+# ---------------------------------------------------------------- repetição
+
+def em_espera(o: Oferta, historico: dict, agora: datetime, horas: float) -> bool:
+    """Produto postado há pouco fica de fora, a não ser que o preço tenha caído."""
+    ultimo = historico.get(o.chave)
+    if not ultimo:
+        return False
+    if isinstance(ultimo, str):  # formato antigo: só a data
+        ultimo = {"em": ultimo + "T00:00:00-03:00", "preco": float("inf")}
+    passou = (agora - datetime.fromisoformat(ultimo["em"])).total_seconds() / 3600
+    if passou >= horas:
+        return False
+    # promoção melhorou (3% mais barato) e já faz pelo menos 1h: pode repetir
+    return not (passou >= 1 and o.preco <= ultimo["preco"] * 0.97)
 
 
 # ---------------------------------------------------------------- conferir e postar
@@ -183,55 +142,109 @@ def conferir(o: Oferta, filtros: dict) -> tuple[Oferta | None, str]:
     atual = LOJAS[o.loja].preco_atual(o)
     if atual is None:
         return None, "produto indisponível ou oferta encerrada"
-    subiu = (atual.preco - o.preco) / o.preco * 100
-    if subiu > filtros.get("variacao_preco_maxima", 0):
-        return None, f"preço subiu de {legenda.reais(o.preco)} para {legenda.reais(atual.preco)}"
-    if atual.desconto < filtros.get("desconto_minimo", 0):
-        return None, f"desconto caiu para {atual.desconto}%"
+    atual.palavra_chave = o.palavra_chave
+    motivo = passa_filtros(atual, {**filtros, "avaliacao_minima": 0, "vendas_minimas": 0})
+    if motivo and motivo != "sem link":
+        return None, motivo
     atual.link = atual.link or o.link
     return atual, ""
 
 
-def postar(cfg: dict, agora: datetime | None = None, enviar: bool = True,
-           destino: str | None = None, log=print) -> dict | None:
-    fuso = ZoneInfo(cfg["agenda"]["fuso"])
-    agora = agora or datetime.now(fuso)
-    dia = agora.strftime("%Y-%m-%d")
-    fila = _ler(caminho_fila(dia), [])
+def candidatas(cfg: dict, agora: datetime) -> list[Oferta]:
     historico = _ler(caminho_historico(), {})
+    vitrine = _ler(caminho_vitrine(), {}).get("ofertas", [])
+    horas = cfg["agenda"]["repetir_apos_horas"]
+    lista = [o for d in vitrine if not em_espera(o := Oferta.de_dict(d), historico, agora, horas)]
+    # variedade: evita o mesmo tipo de produto das 2 últimas postagens
+    recentes = [r["palavra_chave"] for r in _ler(caminho_registro(agora.strftime("%Y-%m-%d")), [])[-2:]]
+    variadas = [o for o in lista if o.palavra_chave not in recentes]
+    return variadas or lista
 
-    for item in fila:
-        if item["status"] != "pendente" or datetime.fromisoformat(item["horario"]) > agora:
-            continue
-        o = Oferta.de_dict(item["oferta"])
+
+def postar(cfg: dict, agora: datetime | None = None, enviar: bool = True,
+           destino: str | None = None, tentativas: int = 6, log=print) -> dict | None:
+    agora = agora or agora_em(cfg)
+    dia = agora.strftime("%Y-%m-%d")
+    for o in candidatas(cfg, agora)[:tentativas]:
         try:
             atual, motivo = conferir(o, cfg["filtros"])
         except Exception as e:
-            item["status"], item["motivo"] = "erro", f"conferência de preço falhou: {e}"
-            log(f"! {o.chave}: {item['motivo']}")
+            log(f"! {o.chave}: conferência de preço falhou: {e}")
             continue
         if atual is None:
-            item["status"], item["motivo"] = "cancelada", motivo
-            log(f"- {o.chave}: cancelada ({motivo})")
+            log(f"- {o.chave}: pulada ({motivo})")
+            _tirar_da_vitrine(o.chave)
             continue
+        if atual.loja == "mercadolivre":
+            if not mercadolivre.gera_link():
+                continue
+            try:
+                atual.link = mercadolivre.link_afiliado(atual.extra.get("permalink") or o.extra["permalink"])
+            except Exception as e:
+                log(f"! link ML {o.id}: {e}")
+                continue
 
         texto = legenda.montar(atual)
-        if enviar:
-            whatsapp.enviar(texto, atual.imagem, destino)
-            item["status"] = "postada"
-            historico[o.chave] = dia
-        else:
-            item["status"] = "pendente"  # simulação não consome a fila
-        item["postada_em"] = agora.isoformat()
-        item["legenda"] = texto
-        item["oferta"] = atual.para_dict()
-        log(("POSTADA" if enviar else "SIMULAÇÃO") + f" {o.chave}\n{texto}\n")
-        if enviar:
-            _gravar(caminho_fila(dia), fila)
-            _gravar(caminho_historico(), historico)
-        return item  # uma oferta por execução, para espaçar as mensagens
-
-    if enviar:
-        _gravar(caminho_fila(dia), fila)
-    log("Nada para postar agora.")
+        item = {"em": agora.isoformat(), "chave": o.chave, "palavra_chave": o.palavra_chave,
+                "preco": atual.preco, "desconto": atual.desconto, "legenda": texto}
+        if not enviar:
+            log(f"SIMULAÇÃO {o.chave}\n{texto}\n")
+            return item
+        whatsapp.enviar(texto, atual.imagem, destino)
+        historico = _ler(caminho_historico(), {})
+        historico[o.chave] = {"em": agora.isoformat(), "preco": atual.preco}
+        _gravar(caminho_historico(), historico)
+        registro = _ler(caminho_registro(dia), [])
+        registro.append(item)
+        _gravar(caminho_registro(dia), registro)
+        log(f"POSTADA {o.chave}\n{texto}\n")
+        return item
+    log("Nenhuma oferta disponível agora.")
     return None
+
+
+def _tirar_da_vitrine(chave: str) -> None:
+    v = _ler(caminho_vitrine(), {})
+    if v:
+        v["ofertas"] = [d for d in v.get("ofertas", []) if f"{d['loja']}:{d['id']}" != chave]
+        _gravar(caminho_vitrine(), v)
+
+
+# ---------------------------------------------------------------- ficar ligado
+
+def rodar(cfg: dict, ate: datetime | None = None, relogio=None, dormir=time.sleep,
+          log=print) -> int:
+    """Laço do dia. Devolve quantas ofertas postou."""
+    relogio = relogio or (lambda: agora_em(cfg))
+    ag = cfg["agenda"]
+    passo_post = timedelta(minutes=ag["postar_a_cada_minutos"])
+    passo_busca = timedelta(minutes=ag["buscar_a_cada_minutos"])
+    ultima_busca = None
+    postadas = 0
+    while True:
+        agora = relogio()
+        inicio = agora.replace(hour=ag["hora_inicio"], minute=0, second=0, microsecond=0)
+        fim = agora.replace(hour=ag["hora_fim"], minute=0, second=0, microsecond=0)
+        limite = min(fim, ate) if ate else fim
+        if agora >= limite:
+            break
+        if agora < inicio:
+            dormir((inicio - agora).total_seconds())
+            continue
+        if ultima_busca is None or agora - ultima_busca >= passo_busca:
+            try:
+                buscar(cfg, agora, log=log)
+            except Exception as e:
+                log(f"! busca falhou: {e}")
+            ultima_busca = agora
+        try:
+            if postar(cfg, agora, log=log):
+                postadas += 1
+        except Exception as e:
+            log(f"! postagem falhou: {e}")
+        proximo = agora + passo_post
+        espera = (proximo - relogio()).total_seconds()
+        if espera > 0:
+            dormir(espera)
+    log(f"Fim da rodada: {postadas} ofertas postadas.")
+    return postadas
