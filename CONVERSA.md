@@ -3,7 +3,7 @@
 Use este arquivo para continuar o trabalho em outra conversa. O plano técnico completo está no `README.md`.
 
 - **Repositório:** github.com/jeraraujo7/GRUPINHO-DA-BIA (público)
-- **Branch de trabalho:** `claude/cool-carson-lz7yd8` (ainda não foi juntado ao `main`)
+- **Branch:** tudo foi juntado ao `main` em 18/11 (pull request #1). A agenda roda a partir do `main`.
 - **Pasta do cliente no Drive:** G:\Meu Drive\CLIENTES\GRUPINHO DA BIA (subpastas Marca, Textos e Código)
 - **Última atualização:** 18/11/2026
 
@@ -41,8 +41,8 @@ Grupo de ofertas no WhatsApp com links de afiliado. Um robô busca produtos de c
 2. **Teste com 5 ofertas:** em Actions > Rotina de ofertas > Run workflow, ação `teste`. Ler o log e conferir as legendas e os links. Se o log mostrar "o Mercado Livre pediu login", o Mercado Livre bloqueou o GitHub; aí a alternativa é rodar o robô em outro servidor.
 3. **Z-API:** criar a instância em z-api.io, conectar o chip do grupo pelo QR Code (o Jer precisa do celular do chip) e cadastrar nos Secrets `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN` e `ZAPI_CLIENT_TOKEN`. Depois rodar `python -m achadinhos grupos` para pegar o `WHATSAPP_GRUPO_ID` e cadastrar também.
 4. **Shopee:** aguardando o Jer avisar que a conta de afiliado foi ativada. Aí: cadastrar `SHOPEE_APP_ID` e `SHOPEE_SECRET` nos Secrets e rodar `python -m achadinhos categorias` para preencher `shopee_categorias` no `config.json`.
-5. **Juntar o branch ao `main`:** abrir o pull request quando o Jer pedir.
-6. **Ligar a rotina:** criar a variável `ROTINA_LIGADA = sim` em Settings > Secrets and variables > Actions > Variables.
+5. **Juntar ao `main`:** feito em 18/11 (pull request #1).
+6. **Ligar a rotina:** não precisa mais. A agenda liga sozinha quando as chaves da Z-API estiverem nos Secrets (o grupo "Grupinho da Bia" é achado pelo nome; `WHATSAPP_GRUPO_ID` virou opcional). Para pausar: variável `ROTINA_LIGADA = nao`.
 
 ## Grupo no WhatsApp
 
