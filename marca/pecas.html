@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Peças da marca Grupinho da Bia</title>
+<!-- Fonte das imagens de marca/png. Para refazer: node marca/exportar.js -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400..800&display=swap">
+<style>
+:root{
+  --agata:#1D44B8; --agata-escuro:#102C7A; --gema:#FFC83D; --melancia:#F2445A;
+  --louca:#F2F5FB; --grafite:#151B2E; --branco:#FFFFFF;
+  --display:"Bricolage Grotesque", "Arial Black", sans-serif;
+  --texto:"Figtree", "Helvetica Neue", Arial, sans-serif;
+}
+*{box-sizing:border-box;margin:0}
+body{background:#ccd3e3;font-family:var(--texto);display:flex;flex-wrap:wrap;gap:40px;padding:40px;align-items:flex-start}
+.peca{position:relative;overflow:hidden;flex:none}
+/* pontilhado de ágata: as pintinhas brancas da louça esmaltada */
+.pintas{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.13) 2.2px,transparent 2.6px);background-size:34px 34px;pointer-events:none}
+
+/* 1. foto do grupo 640 */
+#foto-grupo{width:640px;height:640px;background:var(--agata);display:grid;place-items:center}
+#foto-grupo svg{width:430px;height:430px}
+
+/* 2. logo horizontal, fundo transparente */
+#logo-horizontal{width:1200px;height:400px;display:flex;align-items:center;gap:36px;padding:0 60px}
+#logo-horizontal-branco{width:1200px;height:400px;display:flex;align-items:center;gap:36px;padding:0 60px}
+.lock-txt{font-family:var(--display);line-height:.86;letter-spacing:-.02em}
+.lock-txt small{display:block;font-size:64px;font-weight:700;letter-spacing:.06em}
+.lock-txt b{display:block;font-size:200px;font-weight:800}
+#logo-horizontal .lock-txt small{color:var(--grafite)}
+#logo-horizontal .lock-txt b{color:var(--agata)}
+#logo-horizontal-branco .lock-txt{color:var(--branco)}
+#logo-horizontal-branco .lock-txt b{color:var(--gema)}
+
+/* 3. post convite 1080x1350 */
+#post-convite{width:1080px;height:1350px;background:var(--agata);color:var(--branco);padding:90px 90px 80px;display:flex;flex-direction:column}
+#post-convite .topo{display:flex;align-items:center;gap:22px;font-family:var(--display);font-weight:800;font-size:44px;letter-spacing:.02em}
+#post-convite .topo svg{width:96px;height:96px}
+#post-convite h1{font-family:var(--display);font-weight:800;font-size:132px;line-height:.92;letter-spacing:-.035em;margin-top:120px}
+#post-convite h1 em{font-style:normal;color:var(--gema)}
+#post-convite p{font-size:44px;line-height:1.3;margin-top:44px;max-width:820px;color:#DCE4FA}
+#post-convite .cta{margin-top:auto;display:flex;align-items:center;justify-content:space-between}
+.botao{background:var(--gema);color:var(--grafite);font-family:var(--display);font-weight:800;font-size:48px;padding:30px 52px;border-radius:999px}
+#post-convite .cta span{font-size:34px;font-weight:600;color:#DCE4FA}
+
+/* 4. story convite 1080x1920 */
+#story-convite{width:1080px;height:1920px;background:var(--louca);color:var(--grafite);display:flex;flex-direction:column;align-items:center;text-align:center;padding:220px 90px 260px}
+#story-convite .selo{width:360px;height:360px}
+#story-convite h1{font-family:var(--display);font-weight:800;font-size:120px;line-height:.95;letter-spacing:-.035em;margin-top:80px;color:var(--agata)}
+#story-convite p{font-size:48px;line-height:1.3;margin-top:48px;max-width:820px}
+#story-convite .lista{display:flex;flex-wrap:wrap;justify-content:center;gap:18px;margin-top:70px;max-width:900px}
+#story-convite .lista span{border:4px solid var(--agata);color:var(--agata);border-radius:999px;padding:14px 34px;font-size:38px;font-weight:700}
+#story-convite .area-link{margin-top:auto;border:5px dashed var(--agata);border-radius:40px;padding:44px 60px;font-size:40px;font-weight:700;color:var(--agata)}
+
+/* 5. card de oferta 1080x1080 (exemplo) */
+#card-oferta{width:1080px;height:1080px;background:var(--louca);padding:56px;display:flex;flex-direction:column;gap:36px}
+#card-oferta .foto{flex:1;background:var(--branco);border-radius:44px;position:relative;display:grid;place-items:center;overflow:hidden}
+#card-oferta .foto svg.prod{width:480px;height:480px}
+#card-oferta .desconto{position:absolute;top:36px;left:36px;background:var(--melancia);color:var(--branco);font-family:var(--display);font-weight:800;font-size:64px;padding:12px 30px;border-radius:24px;transform:rotate(-6deg)}
+#card-oferta .marca{position:absolute;top:36px;right:36px;width:110px;height:110px}
+#card-oferta .exemplo{position:absolute;bottom:26px;left:0;right:0;text-align:center;font-size:26px;color:#7A86A6;font-weight:600;letter-spacing:.08em;text-transform:uppercase}
+#card-oferta .info{display:flex;align-items:flex-end;justify-content:space-between;gap:30px}
+#card-oferta .nome{font-family:var(--display);font-weight:700;font-size:50px;line-height:1.05;color:var(--grafite);max-width:560px;letter-spacing:-.01em}
+#card-oferta .precos{text-align:right;font-variant-numeric:tabular-nums}
+#card-oferta .de{font-size:36px;color:#6B7695;text-decoration:line-through;font-weight:600}
+#card-oferta .por{display:inline-block;background:var(--gema);color:var(--grafite);font-family:var(--display);font-weight:800;font-size:96px;line-height:1;padding:14px 26px 18px;border-radius:24px;margin-top:8px;letter-spacing:-.03em}
+#card-oferta .por small{font-size:46px;vertical-align:.7em;margin-right:6px}
+
+/* 6. capas de destaque 1080 */
+.destaque{width:1080px;height:1080px;background:var(--agata);display:grid;place-items:center}
+.destaque div{display:flex;flex-direction:column;align-items:center;gap:40px;color:var(--branco);font-family:var(--display);font-weight:800;font-size:110px;letter-spacing:-.02em}
+.destaque svg{width:420px;height:420px}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <!-- marca: etiqueta de preço com o nome "bia". Viewbox 200x200 -->
+    <symbol id="selo" viewBox="0 0 200 200">
+      <g transform="rotate(-14 100 100)">
+        <path d="M58 46 H164 a22 22 0 0 1 22 22 V132 a22 22 0 0 1 -22 22 H58 a14 14 0 0 1 -10 -4.2 L18 114 a20 20 0 0 1 0 -28 L48 50.2 A14 14 0 0 1 58 46 Z" fill="var(--c-tag, #FFFFFF)"/>
+        <circle cx="44" cy="100" r="11" fill="var(--c-furo, #FFC83D)"/>
+        <text x="118" y="122" text-anchor="middle" font-family="Bricolage Grotesque, Arial Black, sans-serif" font-weight="800" font-size="74" letter-spacing="-3" fill="var(--c-txt, #1D44B8)">bia</text>
+      </g>
+      <path d="M150 20 l5 12 12 5 -12 5 -5 12 -5 -12 -12 -5 12 -5 Z" fill="var(--c-brilho, #FFC83D)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="peca" id="foto-grupo"><div class="pintas"></div><svg><use href="#selo"/></svg></div>
+
+<div class="peca" id="logo-horizontal" style="--c-tag:#1D44B8;--c-txt:#FFFFFF;--c-furo:#FFC83D;--c-brilho:#F2445A">
+  <svg width="300" height="300"><use href="#selo"/></svg>
+  <div class="lock-txt"><small>GRUPINHO DA</small><b>bia</b></div>
+</div>
+
+<div class="peca" id="logo-horizontal-branco" style="background:transparent">
+  <svg width="300" height="300"><use href="#selo"/></svg>
+  <div class="lock-txt"><small>GRUPINHO DA</small><b>bia</b></div>
+</div>
+
+<div class="peca" id="post-convite">
+  <div class="pintas"></div>
+  <div class="topo"><svg><use href="#selo"/></svg>GRUPINHO DA BIA</div>
+  <h1>Achadinhos de casa e cozinha, <em>todo dia</em> no seu WhatsApp.</h1>
+  <p>Panela, organizador, roupa de cama, eletro. A gente garimpa na Shopee e no Mercado Livre e manda só o que está com desconto de verdade.</p>
+  <div class="cta"><div class="botao">Entre no grupinho</div><span>link na bio</span></div>
+</div>
+
+<div class="peca" id="story-convite" style="--c-tag:#1D44B8;--c-txt:#FFFFFF;--c-furo:#FFC83D;--c-brilho:#F2445A">
+  <svg class="selo"><use href="#selo"/></svg>
+  <h1>Tem achadinho novo a cada 5 minutos.</h1>
+  <p>Das 7h às 22h, com o preço conferido na hora de cada envio.</p>
+  <div class="lista"><span>cozinha</span><span>cama, mesa e banho</span><span>organização</span><span>limpeza</span><span>decoração</span><span>eletro</span></div>
+  <div class="area-link">cole aqui o adesivo de link do grupo</div>
+</div>
+
+<div class="peca" id="card-oferta" style="--c-tag:#1D44B8;--c-txt:#FFFFFF;--c-furo:#FFC83D;--c-brilho:#F2445A">
+  <div class="foto">
+    <div class="desconto">-45%</div>
+    <svg class="marca"><use href="#selo"/></svg>
+    <!-- ilustração de exemplo: no uso real entra a foto do produto -->
+    <svg class="prod" viewBox="0 0 240 240">
+      <ellipse cx="120" cy="206" rx="92" ry="12" fill="#E3E8F4"/>
+      <rect x="40" y="96" width="160" height="100" rx="26" fill="#1D44B8"/>
+      <g fill="#FFFFFF" opacity=".55"><circle cx="70" cy="130" r="4"/><circle cx="104" cy="150" r="3"/><circle cx="150" cy="122" r="4"/><circle cx="170" cy="164" r="3"/><circle cx="86" cy="176" r="3"/><circle cx="132" cy="178" r="4"/></g>
+      <rect x="30" y="84" width="180" height="20" rx="10" fill="#102C7A"/>
+      <rect x="2" y="112" width="40" height="16" rx="8" fill="#151B2E"/>
+      <rect x="198" y="112" width="40" height="16" rx="8" fill="#151B2E"/>
+      <rect x="104" y="62" width="32" height="18" rx="9" fill="#151B2E"/>
+      <path d="M90 52 q8 -14 0 -26 M120 46 q8 -14 0 -26 M150 52 q8 -14 0 -26" stroke="#B9C3DD" stroke-width="5" fill="none" stroke-linecap="round"/>
+    </svg>
+    <div class="exemplo">exemplo de layout</div>
+  </div>
+  <div class="info">
+    <div class="nome">Jogo de panelas antiaderente 5 peças</div>
+    <div class="precos"><div class="de">De R$ 399,90</div><div class="por"><small>R$</small>219,90</div></div>
+  </div>
+</div>
+
+<div class="peca destaque" id="destaque-cozinha"><div class="pintas"></div><div><svg viewBox="0 0 120 120" fill="none" stroke="#FFC83D" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="46" width="84" height="50" rx="14"/><path d="M8 58h10M102 58h10M42 34h36"/></svg>cozinha</div></div>
+<div class="peca destaque" id="destaque-casa"><div class="pintas"></div><div><svg viewBox="0 0 120 120" fill="none" stroke="#FFC83D" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 56 60 20l44 36M28 48v52h64V48"/><rect x="50" y="68" width="20" height="32"/></svg>casa</div></div>
+<div class="peca destaque" id="destaque-ofertas"><div class="pintas"></div><div><svg viewBox="0 0 120 120" fill="none" stroke="#FFC83D" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"><path d="M64 14h40v40L56 102 16 62Z"/><circle cx="86" cy="32" r="6"/></svg>ofertas</div></div>
+
+</body>
+</html>

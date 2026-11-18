@@ -1,4 +1,4 @@
-# Achadinhos da Bia
+# Grupinho da Bia
 
 Grupo de ofertas no WhatsApp com links de afiliado. O Claude busca os produtos em promoção, gera os links de afiliado, escreve uma legenda curta e posta no grupo todos os dias.
 
@@ -102,12 +102,17 @@ Chaves usadas:
 |---|---|
 | `SHOPEE_APP_ID`, `SHOPEE_SECRET` | Shopee Afiliados > Open API |
 | `ML_CLIENT_ID`, `ML_CLIENT_SECRET` | aplicativo criado em developers.mercadolivre.com.br (o acesso de 6h é renovado sozinho) |
-| `ML_LINK_API_URL`, `ML_LINK_API_KEY` | serviço que gera o link de afiliado do Mercado Livre (veja abaixo) |
+| `ML_LINK_PARAMS` | parâmetros de rastreio do link de afiliado do Mercado Livre, copiados de um link de exemplo (veja abaixo) |
+| `ML_LINK_API_URL`, `ML_LINK_API_KEY` | alternativa: serviço externo que gera o link de afiliado |
 | `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` | painel da Z-API |
 | `WHATSAPP_GRUPO_ID` | id do grupo, achado com `python -m achadinhos grupos` |
 
-**Mercado Livre:** o Mercado Livre não tem uma API aberta para gerar o link de afiliado; o caminho oficial é o Gerador de Links do Portal do Afiliado. Por isso o gerador de link é configurável. Enquanto `ML_LINK_API_URL` não estiver configurada, só a Shopee posta.
+**Mercado Livre:** o Mercado Livre não tem uma API aberta para gerar o link de afiliado; o caminho oficial é o Gerador de Links do Portal do Afiliado. Por isso o robô copia os parâmetros de rastreio de um link de exemplo (como `matt_tool` e `matt_word`) e cola em cada produto. Basta guardar esses parâmetros, ou o link de exemplo inteiro, em `ML_LINK_PARAMS`. Se o Gerador de Links devolver só um link curto (`mercadolivre.com/sec/...`), abra esse link no navegador e copie o endereço longo em que ele termina. Enquanto `ML_LINK_PARAMS` não estiver configurada, só a Shopee posta.
 
-## Texto sugerido para a descrição do grupo
+## Texto para a descrição do grupo
 
-> Achadinhos da Bia 🏠 Ofertas de casa e cozinha todos os dias. Os links do grupo são links de afiliado: posso receber uma comissão pelas compras, sem custo extra para você. Os preços são conferidos na hora do envio, mas podem mudar a qualquer momento na loja.
+O texto completo, com aviso de afiliado, responsabilidade da loja, segurança e regras, está em [`marca/BIO.md`](marca/BIO.md).
+
+## Identidade visual
+
+Logo, paleta, fontes e peças para redes sociais ficam na pasta [`marca/`](marca/). As imagens prontas estão em `marca/png`. Para refazer depois de mudar `marca/pecas.html`, rode `node marca/exportar.js`.

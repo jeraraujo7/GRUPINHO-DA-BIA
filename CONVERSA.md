@@ -1,10 +1,10 @@
-# Achadinhos da Bia: resumo da conversa e onde paramos
+# Grupinho da Bia: resumo da conversa e onde paramos
 
 Use este arquivo para continuar o trabalho em outra conversa. O plano técnico completo está no `README.md`.
 
 - **Repositório:** github.com/jeraraujo7/GRUPINHO-DA-BIA (era ACHADINHOS-DA-BIA; o GitHub renomeou e redireciona o nome antigo)
 - **Branch de trabalho:** `claude/cool-carson-lz7yd8` (ainda não foi juntado ao `main`)
-- **Data:** 17/11/2026
+- **Data:** 18/11/2026
 
 ## O que é o projeto
 
@@ -47,12 +47,19 @@ Grupo de ofertas no WhatsApp com links de afiliado. Um robô busca produtos de c
    - cadastrar `SHOPEE_APP_ID` e `SHOPEE_SECRET` nos Secrets do GitHub;
    - rodar `python -m achadinhos categorias` e colocar os ids de categoria em `shopee_categorias` no `config.json`.
 2. **Mercado Livre:** o Jer já é afiliado. Falta:
-   - **Link de exemplo:** gerar um link no **Gerador de Links** do Portal do Afiliado e mandar na conversa (não é senha). O Mercado Livre não tem uma API aberta para gerar o link de afiliado. Pelo formato do link de exemplo, o Claude decide como gerar os links no código. Hoje o código espera um serviço externo em `ML_LINK_API_URL`, e sem ele as ofertas do Mercado Livre não são postadas.
+   - **Link de exemplo:** gerar um link no **Gerador de Links** do Portal do Afiliado e mandar na conversa (não é senha). O código já sabe copiar os parâmetros de rastreio desse link (`matt_tool`, `matt_word` etc.) para cada produto, pela variável `ML_LINK_PARAMS`. Falta só conferir o formato com o link real e cadastrar a variável. Sem ela, as ofertas do Mercado Livre não são postadas.
    - **Aplicativo:** criar em https://developers.mercadolivre.com.br (Meus aplicativos > Criar aplicativo; se pedir endereço de retorno, usar `https://github.com`). Depois cadastrar `ML_CLIENT_ID` e `ML_CLIENT_SECRET` nos Secrets do GitHub.
 3. **Z-API:** criar a instância, conectar o chip do grupo pelo QR Code e cadastrar `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` e `WHATSAPP_GRUPO_ID` (o id sai do comando `python -m achadinhos grupos`).
 4. **Juntar o branch ao `main`:** o Claude pode abrir o pull request quando o Jer pedir.
 5. **Teste com 5 ofertas reais:** em Actions > Rotina de ofertas > Run workflow, ação `teste`.
 6. **Ligar a rotina:** criar a variável `ROTINA_LIGADA = sim`.
+
+## Identidade visual (18/11)
+
+- Nome: **Grupinho da Bia**. Logo: etiqueta de preço inclinada com "bia", no azul de ágata.
+- Paleta: Ágata `#1D44B8`, Ágata escuro `#102C7A`, Gema `#FFC83D`, Melancia `#F2445A` (só no selo de desconto), Louça `#F2F5FB`, Grafite `#151B2E`. Fontes: Bricolage Grotesque e Figtree.
+- Tudo na pasta `marca/`: `pecas.html` (fonte das peças), `exportar.js`, `png/` (foto do grupo, logos, card de oferta, post e story de convite, capas de destaque), `guia.html` e `BIO.md` (descrição do grupo com aviso de afiliado e proteções).
+- Guia publicado: https://claude.ai/artifact/1qiqZzJeruZfMSzGSAfxAh
 
 ## Observações
 
