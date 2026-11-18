@@ -54,6 +54,13 @@ Grupo de ofertas no WhatsApp com links de afiliado. Um robô busca produtos de c
 5. **Teste com 5 ofertas reais:** em Actions > Rotina de ofertas > Run workflow, ação `teste`.
 6. **Ligar a rotina:** criar a variável `ROTINA_LIGADA = sim`.
 
+## Grupo no WhatsApp
+
+- **Link de convite:** https://chat.whatsapp.com/JRY7yIMbOv609NylCljfsz
+- Use nos convites (post, story, bio do Instagram). Se o link vazar para spam, dá para gerar outro em Dados do grupo > Convidar via link > Redefinir link, e atualizar aqui.
+- O id técnico do grupo (`WHATSAPP_GRUPO_ID`) é outro: sai do comando `python -m achadinhos grupos` depois que a Z-API estiver conectada.
+- Pasta do cliente no Drive: G:\Meu Drive\CLIENTES\GRUPINHO DA BIA (subpastas Marca, Textos e Código).
+
 ## Identidade visual (18/11)
 
 - Nome: **Grupinho da Bia**. Logo: etiqueta de preço inclinada com "bia", no azul de ágata.
