@@ -37,14 +37,8 @@ Grupo de ofertas no WhatsApp com links de afiliado. Um robô busca produtos de c
 
 ## O que falta (próximos passos)
 
-1. **Mercado Livre: busca de produtos travada.** O suporte do Mercado Livre respondeu em 18/11 (chamado 496547907):
-   - não existe API oficial de afiliados para gerar links; o canal oficial é o Gerador de Links do Portal (o nosso link pelos parâmetros `matt_word`/`matt_tool` continua valendo, mas é preciso conferir no Portal se os cliques contam);
-   - a opção de criar aplicação no DevCenter **não aparece para a conta** e o formulário está fechado. Eles não têm como liberar, e sem aplicativo a API bloqueia a busca (403).
-
-   Decisão pendente do Jer. Recomendação do Claude: **começar só com a Shopee**, que tem API oficial, e tratar o Mercado Livre depois, por um destes caminhos:
-   - (a) ler a página pública de ofertas do Mercado Livre (mercadolivre.com.br/ofertas), filtrando casa e cozinha. Funciona sem aplicativo, mas o site pode bloquear o robô e mudar o layout;
-   - (b) semiautomático: o Jer cola links de produtos num arquivo, e o robô confere o preço e posta junto com os da Shopee.
-2. **Teste com 5 ofertas:** em Actions > Rotina de ofertas > Run workflow, ação `teste`. Ler o log e conferir as legendas e os links. Se a busca do Mercado Livre falhar mesmo com o aplicativo (o Mercado Livre tem restringido esse acesso), ajustar `achadinhos/mercadolivre.py`.
+1. **Mercado Livre: resolvido pelas páginas públicas (18/11).** O suporte (chamado 496547907) confirmou que não há API de afiliados e que a conta não pode criar aplicativo. A busca do site, a página /ofertas e a página de produto pedem login para acesso automático, mas as páginas de categoria `/c/casa-moveis-e-decoracao` e `/c/eletrodomesticos` abrem sem login. O robô lê essas duas páginas (cerca de 150 produtos, mais de 100 com desconto), confere o preço relendo-as e cola os parâmetros de afiliado. Testado nesta sessão com ofertas reais. Falta confirmar que o GitHub Actions também consegue ler as páginas (o teste do passo 2 mostra) e, no primeiro dia, se os cliques aparecem no Portal do Afiliado. A conta do Jer não é usada para nada disso.
+2. **Teste com 5 ofertas:** em Actions > Rotina de ofertas > Run workflow, ação `teste`. Ler o log e conferir as legendas e os links. Se o log mostrar "o Mercado Livre pediu login", o Mercado Livre bloqueou o GitHub; aí a alternativa é rodar o robô em outro servidor.
 3. **Z-API:** criar a instância em z-api.io, conectar o chip do grupo pelo QR Code (o Jer precisa do celular do chip) e cadastrar nos Secrets `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN` e `ZAPI_CLIENT_TOKEN`. Depois rodar `python -m achadinhos grupos` para pegar o `WHATSAPP_GRUPO_ID` e cadastrar também.
 4. **Shopee:** aguardando o Jer avisar que a conta de afiliado foi ativada. Aí: cadastrar `SHOPEE_APP_ID` e `SHOPEE_SECRET` nos Secrets e rodar `python -m achadinhos categorias` para preencher `shopee_categorias` no `config.json`.
 5. **Juntar o branch ao `main`:** abrir o pull request quando o Jer pedir.
@@ -68,10 +62,10 @@ Grupo de ofertas no WhatsApp com links de afiliado. Um robô busca produtos de c
 ## Observações
 
 - **Sessões na nuvem x no PC:** a sessão na nuvem não alcança o navegador nem o computador do Jer. Tudo que exige login (Mercado Livre, Z-API, GitHub Settings) deve ser feito numa sessão do Claude Desktop rodando no PC dele.
-- **Rede do ambiente de nuvem "ACHADINHOS DA BIA":** hosts liberados `is.gd`, `meli.la` e `api.mercadolibre.com`.
+- **Rede do ambiente de nuvem "ACHADINHOS DA BIA":** hosts liberados `is.gd`, `meli.la`, `api.mercadolibre.com`, `www.mercadolivre.com.br`, `lista.mercadolivre.com.br`, `produto.mercadolivre.com.br` e `http2.mlstatic.com`.
 - **Risco de bloqueio:** 180 mensagens por dia por serviço não oficial aumentam o risco de o WhatsApp bloquear o chip. Se acontecer, aumentar `postar_a_cada_minutos` no `config.json`.
 - **Dados públicos:** o repositório é público, então a vitrine, o histórico e as postagens em `data/` ficam visíveis, assim como o link do grupo neste arquivo. Nenhuma chave vai para lá.
 
 ## Para começar a próxima conversa (no PC)
 
-> Projeto Grupinho da Bia, repositório jeraraujo7/GRUPINHO-DA-BIA, branch claude/cool-carson-lz7yd8. Leia o CONVERSA.md e o README.md. O Mercado Livre não libera aplicativo para a minha conta (passo 1 do "O que falta"), então vamos seguir com a Shopee primeiro. Use o meu navegador para a Z-API e, quando a Shopee for ativada, para cadastrar as chaves nos Secrets do GitHub sem mostrar os valores no chat. Só me chame para código de verificação, aceite de termos ou o QR Code no celular do chip.
+> Projeto Grupinho da Bia, repositório jeraraujo7/GRUPINHO-DA-BIA, branch claude/cool-carson-lz7yd8. Leia o CONVERSA.md e o README.md. O Mercado Livre já funciona pelas páginas públicas de categoria; falta rodar o teste com 5 ofertas no GitHub Actions. Use o meu navegador para a Z-API e, quando a Shopee for ativada, para cadastrar as chaves nos Secrets do GitHub sem mostrar os valores no chat. Só me chame para código de verificação, aceite de termos ou o QR Code no celular do chip.

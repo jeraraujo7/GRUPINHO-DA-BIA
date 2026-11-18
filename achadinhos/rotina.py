@@ -94,8 +94,12 @@ def buscar(cfg: dict, agora: datetime | None = None, log=print) -> list[Oferta]:
     melhores: dict[str, Oferta] = {}
     for loja in lojas:
         mod = LOJAS[loja]
-        buscas = [{"categoria": c} for c in cfg.get(f"{loja}_categorias", [])]
-        buscas += [{"palavra_chave": t} for t in cfg["palavras_chave"]]
+        if hasattr(mod, "buscas"):  # a loja define as próprias buscas (ex.: páginas do ML)
+            buscas = mod.buscas()
+        else:
+            buscas = [{"categoria": c} for c in cfg.get(f"{loja}_categorias", [])]
+        if getattr(mod, "usa_palavras_chave", True):
+            buscas += [{"palavra_chave": t} for t in cfg["palavras_chave"]]
         total = aprovadas = 0
         for b in buscas:
             try:

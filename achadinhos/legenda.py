@@ -111,6 +111,8 @@ def montar(oferta: Oferta) -> str:
     por = reais(oferta.preco)
     if oferta.extra.get("a_partir_de"):
         por = f"a partir de {por}"
+    if oferta.extra.get("pix"):
+        por = f"{por} no Pix"
     if oferta.desconto > 0:
         linhas.append(f"De ~{reais(oferta.preco_antigo)}~ por *{por}* ({oferta.desconto}% OFF)")
     else:

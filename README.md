@@ -58,7 +58,7 @@ As chaves são cadastradas por um formulário seguro do ambiente, nunca coladas 
 ```
 config.json              palavras-chave, categorias, filtros e horários
 achadinhos/shopee.py     busca na Shopee Afiliados (já devolve o link de afiliado)
-achadinhos/mercadolivre.py  busca no Mercado Livre e gera o link de afiliado
+achadinhos/mercadolivre.py  lê as páginas públicas de categoria do Mercado Livre e gera o link de afiliado
 achadinhos/legenda.py    legenda curta: gancho, nome, De/Por e link
 achadinhos/whatsapp.py   envio pela Z-API (foto + legenda)
 achadinhos/rotina.py     buscar (vitrine), postar a melhor oferta, ficar ligado o dia todo
@@ -70,7 +70,9 @@ data/postagens/AAAA-MM-DD.json   tudo o que foi postado no dia
 
 Tudo isso é ajustável no `config.json` (`filtros` e `agenda`).
 
-**Categorias:** no Mercado Livre a busca já varre as categorias Casa, Móveis e Decoração (`MLB1574`) e Eletrodomésticos (`MLB5726`). Na Shopee, depois que o acesso for liberado, rode `python -m achadinhos categorias` e coloque os ids que mais aparecem em `shopee_categorias`. Enquanto isso, a Shopee é varrida pelas palavras-chave.
+**Mercado Livre sem API:** o Mercado Livre não libera aplicativo para a conta (chamado 496547907), e a busca do site, a página de ofertas e a página de cada produto pedem login para acesso automático. Por isso o robô lê as duas páginas públicas de categoria, Casa, Móveis e Decoração e Eletrodomésticos (`mercadolivre_paginas` no `config.json`). Juntas, elas trazem cerca de 150 produtos em destaque, mais de 100 com desconto. O preço é conferido relendo essas páginas (com no máximo 10 minutos de atraso); se o produto saiu delas, a oferta é pulada. As palavras-chave não valem para o Mercado Livre. Se um dia essas páginas também passarem a pedir login, o log mostra "o Mercado Livre pediu login" e só a Shopee continua postando.
+
+**Categorias da Shopee:** na Shopee, depois que o acesso for liberado, rode `python -m achadinhos categorias` e coloque os ids que mais aparecem em `shopee_categorias`. Enquanto isso, a Shopee é varrida pelas palavras-chave.
 
 Comandos:
 
@@ -101,7 +103,6 @@ Chaves usadas:
 | Nome | De onde vem |
 |---|---|
 | `SHOPEE_APP_ID`, `SHOPEE_SECRET` | Shopee Afiliados > Open API |
-| `ML_CLIENT_ID`, `ML_CLIENT_SECRET` | aplicativo criado em developers.mercadolivre.com.br (o acesso de 6h é renovado sozinho) |
 | `ML_LINK_PARAMS` | parâmetros de rastreio do link de afiliado do Mercado Livre, copiados de um link de exemplo (veja abaixo) |
 | `ML_LINK_API_URL`, `ML_LINK_API_KEY` | alternativa: serviço externo que gera o link de afiliado |
 | `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` | painel da Z-API |

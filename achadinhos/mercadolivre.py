@@ -1,74 +1,180 @@
-"""Mercado Livre: busca de produtos e link de afiliado.
+"""Mercado Livre: ofertas lidas das páginas públicas de categoria e link de afiliado.
 
-Busca e preço: API do Mercado Livre (api.mercadolibre.com), com o acesso do
-aplicativo criado em developers.mercadolivre.com.br:
-  ML_CLIENT_ID, ML_CLIENT_SECRET  -> o token (que vence a cada 6h) é renovado sozinho
-  ML_ACCESS_TOKEN                 -> alternativa: token fixo, se preferir
+Por que páginas e não API: o suporte do Mercado Livre confirmou (chamado
+496547907, 18/11/2026) que a conta não pode criar aplicativo no DevCenter, e
+sem aplicativo a API bloqueia a busca. A busca do site, a página de ofertas e a
+página de cada produto pedem login para acesso automático. As páginas de
+categoria (/c/...) abrem sem login e trazem os produtos em destaque com preço
+antigo, preço atual e % OFF. São essas que o robô lê ("mercadolivre_paginas"
+no config.json).
 
-Link de afiliado: o Mercado Livre não publica uma API aberta para gerar o link
-(o caminho oficial é o "Gerador de Links" no Portal do Afiliado). Há dois jeitos:
-  ML_LINK_PARAMS   parâmetros de rastreio copiados de um link de exemplo do
-                   Gerador de Links (ex.: "matt_tool=123&matt_word=apelido").
-                   São colados em cada produto. Aceita também o link inteiro.
+Conferência de preço: como a página do produto pede login, o preço é conferido
+relendo a página de categoria (cache de 10 min). Se o produto saiu da página,
+a oferta é pulada.
+
+Link de afiliado: não há API oficial (o canal oficial é o Gerador de Links do
+Portal). Os parâmetros de rastreio do link de exemplo são colados em cada produto:
+  ML_LINK_PARAMS   ex.: "matt_tool=123&matt_word=apelido" (aceita o link inteiro).
                    Sem a variável, vale "ml_link_params" do config.json.
   ML_LINK_API_URL  alternativa: endpoint que recebe {"url": "<produto>"} e
   ML_LINK_API_KEY  devolve o link (chave no cabeçalho X-API-Key)
-Sem nenhum dos dois, as ofertas do Mercado Livre são encontradas mas não são postadas.
 """
 
 from __future__ import annotations
 
+import html
 import json
 import os
+import re
 import time
-import urllib.request
+import urllib.error
 import urllib.parse
+import urllib.request
 from pathlib import Path
 
 from .oferta import Oferta, http_json
 
-API = "https://api.mercadolibre.com"
+CONFIG = Path(__file__).resolve().parent.parent / "config.json"
+PAGINAS_PADRAO = [
+    "https://www.mercadolivre.com.br/c/casa-moveis-e-decoracao",
+    "https://www.mercadolivre.com.br/c/eletrodomesticos",
+]
+NAVEGADOR = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+             "(KHTML, like Gecko) Chrome/130.0 Safari/537.36")
+CACHE_MINUTOS = 10
+
+# o robô não usa as palavras-chave aqui: a busca do site pede login
+usa_palavras_chave = False
+
+_cache: dict[str, tuple[float, list[Oferta]]] = {}
 
 
-_token = {"valor": "", "vence": 0.0}
+class PedeLogin(RuntimeError):
+    pass
+
+
+def _config() -> dict:
+    try:
+        return json.loads(CONFIG.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def paginas() -> list[str]:
+    return _config().get("mercadolivre_paginas") or PAGINAS_PADRAO
 
 
 def configurada() -> bool:
-    return bool(os.environ.get("ML_ACCESS_TOKEN")
-                or (os.environ.get("ML_CLIENT_ID") and os.environ.get("ML_CLIENT_SECRET")))
+    return True  # páginas públicas, não precisa de chave
 
 
-def token() -> str:
-    if os.environ.get("ML_ACCESS_TOKEN"):
-        return os.environ["ML_ACCESS_TOKEN"]
-    if not (os.environ.get("ML_CLIENT_ID") and os.environ.get("ML_CLIENT_SECRET")):
-        return ""
-    if time.time() < _token["vence"]:
-        return _token["valor"]
-    corpo = urllib.parse.urlencode({
-        "grant_type": "client_credentials",
-        "client_id": os.environ["ML_CLIENT_ID"],
-        "client_secret": os.environ["ML_CLIENT_SECRET"],
-    }).encode()
-    req = urllib.request.Request(f"{API}/oauth/token", data=corpo, method="POST", headers={
-        "Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        resp = json.loads(r.read().decode())
-    _token["valor"] = resp["access_token"]
-    _token["vence"] = time.time() + int(resp.get("expires_in", 21600)) - 300  # renova 5 min antes
-    return _token["valor"]
+# ---------------------------------------------------------------- leitura da página
 
-
-def _params_do_config() -> str:
-    caminho = Path(__file__).resolve().parent.parent / "config.json"
+def baixar(url: str) -> str:
+    req = urllib.request.Request(url, headers={
+        "User-Agent": NAVEGADOR, "Accept-Language": "pt-BR,pt;q=0.9",
+        "Accept": "text/html,application/xhtml+xml"})
     try:
-        return json.loads(caminho.read_text(encoding="utf-8")).get("ml_link_params", "")
-    except (OSError, ValueError):
-        return ""
+        with urllib.request.urlopen(req, timeout=40) as r:
+            final = r.geturl()
+            corpo = r.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"HTTP {e.code} em {url}") from None
+    if "account-verification" in final or "/login" in final:
+        raise PedeLogin(f"o Mercado Livre pediu login para ler {url}")
+    return corpo
 
+
+def _valor(aria: str) -> float | None:
+    """'Antes: 1704 reais com 90 centavos' -> 1704.9"""
+    m = re.search(r"([\d.]+)\s+reais(?:\s+com\s+(\d+)\s+centavos?)?", aria or "")
+    if not m:
+        return None
+    return float(m.group(1).replace(".", "")) + int(m.group(2) or 0) / 100
+
+
+def _id(link: str) -> str:
+    q = urllib.parse.parse_qs(urllib.parse.urlsplit(link.replace("#", "?", 1)).query)
+    if q.get("wid"):
+        return q["wid"][0]
+    m = re.search(r"(MLBU?)-?(\d+)", link)
+    return f"{m.group(1)}{m.group(2)}" if m else ""
+
+
+def _imagem(src: str) -> str:
+    """Troca a miniatura .webp pela foto grande em .jpg (melhor para o WhatsApp)."""
+    m = re.search(r"D_[A-Z_0-9]*?_(\d+-ML[A-Z]\d+_\d+)-[A-Z]+\.webp", src or "")
+    return f"https://http2.mlstatic.com/D_NQ_NP_{m.group(1)}-O.jpg" if m else (src or "")
+
+
+def _rotulo(nome: str) -> str:
+    """Duas primeiras palavras do título: serve para variar os tipos de produto."""
+    return " ".join(re.findall(r"[A-Za-zÀ-ÿ]+", nome.lower())[:2])
+
+
+def ler_pagina(texto: str) -> list[Oferta]:
+    ofertas, vistos = [], set()
+    for card in texto.split('class="poly-card__portada"')[1:]:
+        titulo = re.search(r'class="poly-component__title[^"]*"[^>]*>([^<]+)<', card)
+        link = re.search(r'<a href="([^"]+)"[^>]*class="poly-component__title', card)
+        atual = re.search(r'class="poly-price__current".*?aria-label="([^"]+)"', card, re.S)
+        if not (titulo and link and atual):
+            continue
+        antes = re.search(r'andes-money-amount--previous[^>]*aria-label="([^"]+)"', card)
+        img = re.search(r'<img[^>]+class="poly-component__picture"[^>]+src="([^"]+)"', card)
+        link_url = html.unescape(link.group(1))
+        preco = _valor(atual.group(1))
+        preco_antigo = _valor(antes.group(1)) if antes else preco
+        ident = _id(link_url)
+        if not preco or not ident or ident in vistos:
+            continue
+        vistos.add(ident)
+        nome = html.unescape(titulo.group(1)).strip()
+        ofertas.append(Oferta(
+            loja="mercadolivre", id=ident, nome=nome, preco=preco,
+            preco_antigo=preco_antigo or preco, link="",
+            imagem=_imagem(img.group(1) if img else ""),
+            palavra_chave=_rotulo(nome),
+            extra={"permalink": link_url.split("#")[0], "sem_avaliacao": True,
+                   "pix": "no Pix" in card.split("poly-price__installments")[0]},
+        ))
+    return ofertas
+
+
+def _ofertas_da_pagina(url: str, max_idade: float = CACHE_MINUTOS * 60) -> list[Oferta]:
+    guardado = _cache.get(url)
+    if guardado and time.time() - guardado[0] < max_idade:
+        return guardado[1]
+    ofertas = ler_pagina(baixar(url))
+    _cache[url] = (time.time(), ofertas)
+    return ofertas
+
+
+def buscar(palavra_chave: str = "", categoria: str | None = None, **_) -> list[Oferta]:
+    """`categoria` é o endereço de uma página /c/ do Mercado Livre."""
+    if not categoria:
+        return []
+    return _ofertas_da_pagina(categoria, max_idade=0)
+
+
+def buscas() -> list[dict]:
+    return [{"categoria": u} for u in paginas()]
+
+
+def preco_atual(oferta: Oferta) -> Oferta | None:
+    """Relê as páginas (cache de 10 min). None se o produto saiu delas."""
+    for url in paginas():
+        for o in _ofertas_da_pagina(url):
+            if o.id == oferta.id:
+                o.link = oferta.link
+                return o
+    return None
+
+
+# ---------------------------------------------------------------- link de afiliado
 
 def _params_afiliado() -> list[tuple[str, str]]:
-    bruto = (os.environ.get("ML_LINK_PARAMS") or _params_do_config()).strip()
+    bruto = (os.environ.get("ML_LINK_PARAMS") or _config().get("ml_link_params", "")).strip()
     if "?" in bruto:  # colaram o link inteiro
         bruto = bruto.split("?", 1)[1]
     bruto = bruto.split("#", 1)[0]
@@ -77,50 +183,6 @@ def _params_afiliado() -> list[tuple[str, str]]:
 
 def gera_link() -> bool:
     return bool(_params_afiliado() or os.environ.get("ML_LINK_API_URL"))
-
-
-def _cab() -> dict:
-    tok = token()
-    return {"Authorization": f"Bearer {tok}"} if tok else {}
-
-
-def _para_oferta(r: dict, palavra_chave: str = "") -> Oferta | None:
-    preco = r.get("price")
-    antigo = r.get("original_price") or preco
-    if not preco or r.get("available_quantity", 1) == 0:
-        return None
-    return Oferta(
-        loja="mercadolivre",
-        id=r["id"],
-        nome=(r.get("title") or "").strip(),
-        preco=float(preco),
-        preco_antigo=float(antigo),
-        link="",  # preenchido por link_afiliado()
-        imagem=(r.get("thumbnail") or "").replace("-I.jpg", "-O.jpg"),
-        avaliacao=0.0,
-        vendas=int(r.get("sold_quantity") or 0),
-        palavra_chave=palavra_chave,
-        extra={"permalink": r.get("permalink", ""), "sem_avaliacao": True},
-    )
-
-
-def buscar(palavra_chave: str = "", categoria: str | None = None,
-           paginas: int = 2, limite: int = 50) -> list[Oferta]:
-    """Busca por palavra-chave ou por categoria (ex.: MLB1574 Casa, Móveis e Decoração)."""
-    rotulo = f"categoria {categoria}" if categoria else palavra_chave
-    ofertas = []
-    for pagina in range(paginas):
-        params = {"limit": limite, "offset": pagina * limite}
-        if categoria:
-            params["category"] = categoria
-        if palavra_chave:
-            params["q"] = palavra_chave
-        dados = http_json(f"{API}/sites/MLB/search?{urllib.parse.urlencode(params)}", cabecalhos=_cab())
-        resultados = dados.get("results", [])
-        ofertas += [o for r in resultados if (o := _para_oferta(r, rotulo))]
-        if len(resultados) < limite:
-            break
-    return ofertas
 
 
 def link_afiliado(permalink: str) -> str:
@@ -140,13 +202,3 @@ def link_afiliado(permalink: str) -> str:
     if not link:
         raise RuntimeError(f"gerador de link do Mercado Livre não devolveu link: {str(resp)[:200]}")
     return link
-
-
-def preco_atual(oferta: Oferta) -> Oferta | None:
-    r = http_json(f"{API}/items/{oferta.id}", cabecalhos=_cab())
-    if r.get("status") != "active":
-        return None
-    nova = _para_oferta(r, oferta.palavra_chave)
-    if nova:
-        nova.link = oferta.link
-    return nova

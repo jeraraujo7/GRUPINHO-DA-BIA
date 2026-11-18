@@ -19,7 +19,10 @@
     "chuveiro", "torneira", "kit banheiro", "ferramentas casa"
   ],
   "shopee_categorias": [],
-  "mercadolivre_categorias": ["MLB1574", "MLB5726"],
+  "mercadolivre_paginas": [
+    "https://www.mercadolivre.com.br/c/casa-moveis-e-decoracao",
+    "https://www.mercadolivre.com.br/c/eletrodomesticos"
+  ],
   "filtros": {
     "desconto_acima_de": 5,
     "preco_minimo": 10,

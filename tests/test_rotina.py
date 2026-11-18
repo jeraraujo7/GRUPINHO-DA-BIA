@@ -151,6 +151,50 @@ class TestRodar(ComPasta):
         self.assertEqual(p.call_args_list[0].args[1].hour, 7)
 
 
+CARD_ML = """
+<div class="poly-card__portada"><img class="poly-component__picture" src="https://http2.mlstatic.com/D_Q_NP_2X_849756-MLA112337335323_052026-AB.webp" alt="x"/></div>
+<div class="poly-card__content"><h3><a href="https://www.mercadolivre.com.br/guarda-roupa/p/MLB70374494#polycard_client=x&amp;wid=MLB4752587193&amp;sid=y" class="poly-component__title poly-component__title--line-clamp-2">Guarda-roupa Casal 6 Portas</a></h3>
+<s class="andes-money-amount andes-money-amount--previous" aria-label="Antes: 1704 reais com 90 centavos"></s>
+<div class="poly-price__current"><span class="andes-money-amount" aria-label="1381 reais"></span></div>
+<span class="poly-price__unit-description">no Pix</span><span class="poly-price__installments">ou 1502 reais</span></div>
+<div class="poly-card__portada"><img class="poly-component__picture" src="a.webp"/></div>
+<div class="poly-card__content"><h3><a href="https://produto.mercadolivre.com.br/MLB-5365991654-sofa-_JM" class="poly-component__title">Sofá 3 Lugares</a></h3>
+<div class="poly-price__current"><span class="andes-money-amount" aria-label="789 reais"></span></div></div>
+"""
+
+
+class TestMercadoLivrePaginas(unittest.TestCase):
+    def test_ler_pagina(self):
+        from achadinhos import mercadolivre
+        guarda, sofa = mercadolivre.ler_pagina(CARD_ML)
+        self.assertEqual((guarda.id, guarda.preco, guarda.preco_antigo, guarda.desconto),
+                         ("MLB4752587193", 1381.0, 1704.9, 19))
+        self.assertTrue(guarda.extra["pix"])
+        self.assertEqual(guarda.extra["permalink"], "https://www.mercadolivre.com.br/guarda-roupa/p/MLB70374494")
+        self.assertEqual(guarda.imagem, "https://http2.mlstatic.com/D_NQ_NP_849756-MLA112337335323_052026-O.jpg")
+        self.assertEqual((sofa.id, sofa.desconto, sofa.extra["pix"]), ("MLB5365991654", 0, False))
+        self.assertIn("no Pix", legenda.montar(guarda))
+
+    def test_pede_login(self):
+        from achadinhos import mercadolivre
+        resp = mock.MagicMock()
+        resp.__enter__.return_value.geturl.return_value = "https://www.mercadolivre.com.br/gz/account-verification?go=x"
+        with mock.patch("urllib.request.urlopen", return_value=resp):
+            with self.assertRaises(mercadolivre.PedeLogin):
+                mercadolivre.baixar("https://www.mercadolivre.com.br/ofertas")
+
+    def test_preco_atual_relendo_a_pagina(self):
+        from achadinhos import mercadolivre
+        with mock.patch.object(mercadolivre, "baixar", return_value=CARD_ML), \
+             mock.patch.object(mercadolivre, "paginas", return_value=["u1"]):
+            mercadolivre._cache.clear()
+            o = mercadolivre.ler_pagina(CARD_ML)[0]
+            o.link = "L"
+            self.assertEqual(mercadolivre.preco_atual(o).link, "L")
+            o.id = "MLB0"
+            self.assertIsNone(mercadolivre.preco_atual(o))
+
+
 if __name__ == "__main__":
     unittest.main()
 

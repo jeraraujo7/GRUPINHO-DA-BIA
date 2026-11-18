@@ -35,9 +35,6 @@ jobs:
     env:
       SHOPEE_APP_ID: ${{ secrets.SHOPEE_APP_ID }}
       SHOPEE_SECRET: ${{ secrets.SHOPEE_SECRET }}
-      ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
-      ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
-      ML_ACCESS_TOKEN: ${{ secrets.ML_ACCESS_TOKEN }}
       ML_LINK_PARAMS: ${{ vars.ML_LINK_PARAMS || secrets.ML_LINK_PARAMS }}
       ML_LINK_API_URL: ${{ secrets.ML_LINK_API_URL }}
       ML_LINK_API_KEY: ${{ secrets.ML_LINK_API_KEY }}
