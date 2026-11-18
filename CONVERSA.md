@@ -57,6 +57,8 @@ Grupo de ofertas no WhatsApp com links de afiliado. Um robô busca produtos de c
 ## Grupo no WhatsApp
 
 - **Link de convite:** https://chat.whatsapp.com/JRY7yIMbOv609NylCljfsz
+- **Link curto:** https://is.gd/grupinhodabia (criado no is.gd, sem conta; não dá para editar o destino. Se o link do grupo mudar, crie outro link curto)
+- **QR Code:** `marca/png/qr-code-grupo.png`, aponta direto para o link do WhatsApp. Para refazer: `python marca/gerar_qr.py <link>`
 - Use nos convites (post, story, bio do Instagram). Se o link vazar para spam, dá para gerar outro em Dados do grupo > Convidar via link > Redefinir link, e atualizar aqui.
 - O id técnico do grupo (`WHATSAPP_GRUPO_ID`) é outro: sai do comando `python -m achadinhos grupos` depois que a Z-API estiver conectada.
 - Pasta do cliente no Drive: G:\Meu Drive\CLIENTES\GRUPINHO DA BIA (subpastas Marca, Textos e Código).

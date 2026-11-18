@@ -45,6 +45,8 @@ Ninguém do grupo vai pedir pagamento por Pix, senha ou código no seu privado. 
 
 ## Bio curta para o Instagram (até 150 caracteres)
 
+No campo **Link** do perfil, use `https://is.gd/grupinhodabia`.
+
 ```
 Achadinhos de casa e cozinha 🏷️
 Ofertas da Shopee e do Mercado Livre todo dia
