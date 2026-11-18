@@ -38,6 +38,7 @@ jobs:
       ML_CLIENT_ID: ${{ secrets.ML_CLIENT_ID }}
       ML_CLIENT_SECRET: ${{ secrets.ML_CLIENT_SECRET }}
       ML_ACCESS_TOKEN: ${{ secrets.ML_ACCESS_TOKEN }}
+      ML_LINK_PARAMS: ${{ vars.ML_LINK_PARAMS || secrets.ML_LINK_PARAMS }}
       ML_LINK_API_URL: ${{ secrets.ML_LINK_API_URL }}
       ML_LINK_API_KEY: ${{ secrets.ML_LINK_API_KEY }}
       ZAPI_INSTANCE_ID: ${{ secrets.ZAPI_INSTANCE_ID }}

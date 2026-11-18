@@ -6,11 +6,14 @@ aplicativo criado em developers.mercadolivre.com.br:
   ML_ACCESS_TOKEN                 -> alternativa: token fixo, se preferir
 
 Link de afiliado: o Mercado Livre não publica uma API aberta para gerar o link
-(o caminho oficial é o "Gerador de Links" no Portal do Afiliado). Por isso o
-gerador fica configurável:
-  ML_LINK_API_URL  endpoint que recebe {"url": "<produto>"} e devolve o link
-  ML_LINK_API_KEY  chave desse serviço (enviada no cabeçalho X-API-Key)
-Sem ele, as ofertas do Mercado Livre são encontradas mas não são postadas.
+(o caminho oficial é o "Gerador de Links" no Portal do Afiliado). Há dois jeitos:
+  ML_LINK_PARAMS   parâmetros de rastreio copiados de um link de exemplo do
+                   Gerador de Links (ex.: "matt_tool=123&matt_word=apelido").
+                   São colados em cada produto. Aceita também o link inteiro.
+                   Sem a variável, vale "ml_link_params" do config.json.
+  ML_LINK_API_URL  alternativa: endpoint que recebe {"url": "<produto>"} e
+  ML_LINK_API_KEY  devolve o link (chave no cabeçalho X-API-Key)
+Sem nenhum dos dois, as ofertas do Mercado Livre são encontradas mas não são postadas.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ import os
 import time
 import urllib.request
 import urllib.parse
+from pathlib import Path
 
 from .oferta import Oferta, http_json
 
@@ -55,8 +59,24 @@ def token() -> str:
     return _token["valor"]
 
 
+def _params_do_config() -> str:
+    caminho = Path(__file__).resolve().parent.parent / "config.json"
+    try:
+        return json.loads(caminho.read_text(encoding="utf-8")).get("ml_link_params", "")
+    except (OSError, ValueError):
+        return ""
+
+
+def _params_afiliado() -> list[tuple[str, str]]:
+    bruto = (os.environ.get("ML_LINK_PARAMS") or _params_do_config()).strip()
+    if "?" in bruto:  # colaram o link inteiro
+        bruto = bruto.split("?", 1)[1]
+    bruto = bruto.split("#", 1)[0]
+    return urllib.parse.parse_qsl(bruto)
+
+
 def gera_link() -> bool:
-    return bool(os.environ.get("ML_LINK_API_URL"))
+    return bool(_params_afiliado() or os.environ.get("ML_LINK_API_URL"))
 
 
 def _cab() -> dict:
@@ -104,6 +124,13 @@ def buscar(palavra_chave: str = "", categoria: str | None = None,
 
 
 def link_afiliado(permalink: str) -> str:
+    params = _params_afiliado()
+    if params:
+        partes = urllib.parse.urlsplit(permalink)
+        nomes = {k for k, _ in params}
+        atuais = [(k, v) for k, v in urllib.parse.parse_qsl(partes.query) if k not in nomes]
+        consulta = urllib.parse.urlencode(atuais + params)
+        return urllib.parse.urlunsplit(partes._replace(query=consulta, fragment=""))
     url = os.environ["ML_LINK_API_URL"]
     cab = {}
     if os.environ.get("ML_LINK_API_KEY"):

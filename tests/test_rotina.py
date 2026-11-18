@@ -153,3 +153,15 @@ class TestRodar(ComPasta):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LinkMercadoLivre(unittest.TestCase):
+    def test_cola_parametros_do_link_de_exemplo(self):
+        import os
+        from unittest import mock
+        from achadinhos import mercadolivre
+        exemplo = "https://www.mercadolivre.com.br/x/p/MLB1?matt_tool=111&matt_word=bia#pos"
+        with mock.patch.dict(os.environ, {"ML_LINK_PARAMS": exemplo}, clear=False):
+            self.assertTrue(mercadolivre.gera_link())
+            link = mercadolivre.link_afiliado("https://produto.mercadolivre.com.br/MLB-2-panela?matt_tool=9&x=1")
+        self.assertEqual(link, "https://produto.mercadolivre.com.br/MLB-2-panela?x=1&matt_tool=111&matt_word=bia")
