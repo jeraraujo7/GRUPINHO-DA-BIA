@@ -25,7 +25,7 @@ def cmd_status(cfg, _):
     print(f"Shopee .............. {'ok' if shopee.configurada() else 'faltam SHOPEE_APP_ID / SHOPEE_SECRET'}")
     print(f"Mercado Livre busca . {'ok (páginas públicas de categoria, sem chave)'}")
     print(f"Mercado Livre link .. {'ok' if mercadolivre.gera_link() else 'falta ML_LINK_PARAMS'}")
-    print(f"WhatsApp (Z-API) .... {'ok' if whatsapp.configurado() else 'faltam ZAPI_* / WHATSAPP_GRUPO_ID'}")
+    print(f"WhatsApp (Z-API) .... {'ok' if whatsapp.configurado() else 'faltam ZAPI_INSTANCE_ID / ZAPI_TOKEN / ZAPI_CLIENT_TOKEN'}")
 
 
 def cmd_teste(cfg, a):

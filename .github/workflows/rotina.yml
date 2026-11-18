@@ -4,7 +4,7 @@ name: Rotina de ofertas
 # e postando uma a cada 5 min. Um job do GitHub dura no máximo 6h, então o dia
 # é dividido em 3 turnos que começam às 7h, 12h e 17h (10h, 15h e 20h UTC).
 # Se um turno atrasar, o seguinte espera na fila (concurrency) e assume em seguida.
-# Só roda com a variável do repositório ROTINA_LIGADA = sim
+# Liga sozinho quando as chaves da Z-API estiverem nos Secrets. Para pausar, crie a variável ROTINA_LIGADA = nao
 # (Settings > Secrets and variables > Actions > Variables).
 on:
   schedule:
@@ -28,8 +28,8 @@ concurrency:
 
 jobs:
   rodar:
-    # agendado: só com ROTINA_LIGADA = sim. Manual: sempre (para testar antes de ligar).
-    if: vars.ROTINA_LIGADA == 'sim' || github.event_name == 'workflow_dispatch'
+    # agendado: sempre, a não ser que ROTINA_LIGADA = nao. Manual: sempre.
+    if: vars.ROTINA_LIGADA != 'nao' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 350
     env:

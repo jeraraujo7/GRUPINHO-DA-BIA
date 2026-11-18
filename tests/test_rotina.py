@@ -143,7 +143,8 @@ class TestRodar(ComPasta):
         def dormir(seg):
             t[0] += timedelta(seconds=seg)
         cfg = {**CFG, "agenda": {**CFG["agenda"], "hora_fim": 9}}
-        with mock.patch.object(rotina, "buscar") as b, \
+        with mock.patch("achadinhos.whatsapp.configurado", return_value=True), \
+             mock.patch.object(rotina, "buscar") as b, \
              mock.patch.object(rotina, "postar", return_value={"ok": 1}) as p:
             n = rotina.rodar(cfg, relogio=lambda: t[0], dormir=dormir, log=lambda *_: None)
         self.assertEqual(n, 24)              # 7h00 ... 8h55
@@ -193,6 +194,19 @@ class TestMercadoLivrePaginas(unittest.TestCase):
             self.assertEqual(mercadolivre.preco_atual(o).link, "L")
             o.id = "MLB0"
             self.assertIsNone(mercadolivre.preco_atual(o))
+
+
+
+class TestGrupoPeloNome(unittest.TestCase):
+    def test_acha_pelo_nome(self):
+        from achadinhos import whatsapp
+        whatsapp._grupo.clear()
+        grupos = [{"phone": "111-group", "name": "Família"}, {"phone": "222-group", "name": "GRUPINHO DA BIA 🏠"}]
+        with mock.patch.dict("os.environ", {"WHATSAPP_GRUPO_NOME": "Grupinho da Bia"}, clear=False), \
+             mock.patch.object(whatsapp, "listar_grupos", return_value=grupos):
+            os_env = __import__("os").environ
+            os_env.pop("WHATSAPP_GRUPO_ID", None)
+            self.assertEqual(whatsapp.id_do_grupo(), "222-group")
 
 
 if __name__ == "__main__":

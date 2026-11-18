@@ -219,6 +219,9 @@ def _tirar_da_vitrine(chave: str) -> None:
 def rodar(cfg: dict, ate: datetime | None = None, relogio=None, dormir=time.sleep,
           log=print) -> int:
     """Laço do dia. Devolve quantas ofertas postou."""
+    if not whatsapp.configurado():
+        log("WhatsApp ainda não conectado (faltam as chaves da Z-API): nada a postar.")
+        return 0
     relogio = relogio or (lambda: agora_em(cfg))
     ag = cfg["agenda"]
     passo_post = timedelta(minutes=ag["postar_a_cada_minutos"])
