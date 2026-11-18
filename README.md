@@ -107,7 +107,7 @@ Chaves usadas:
 | `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` | painel da Z-API |
 | `WHATSAPP_GRUPO_ID` | id do grupo, achado com `python -m achadinhos grupos` |
 
-**Mercado Livre:** o Mercado Livre não tem uma API aberta para gerar o link de afiliado; o caminho oficial é o Gerador de Links do Portal do Afiliado. Por isso o robô copia os parâmetros de rastreio de um link de exemplo (como `matt_tool` e `matt_word`) e cola em cada produto. Basta guardar esses parâmetros, ou o link de exemplo inteiro, em `ML_LINK_PARAMS`. Se o Gerador de Links devolver só um link curto (`mercadolivre.com/sec/...`), abra esse link no navegador e copie o endereço longo em que ele termina. Enquanto `ML_LINK_PARAMS` não estiver configurada, só a Shopee posta.
+**Mercado Livre:** o Mercado Livre não tem uma API aberta para gerar o link de afiliado; o caminho oficial é o Gerador de Links do Portal do Afiliado. Por isso o robô copia os parâmetros de rastreio de um link de exemplo (como `matt_tool` e `matt_word`) e cola em cada produto. Esses parâmetros ficam em `ml_link_params` no `config.json` (a variável `ML_LINK_PARAMS`, se existir, tem prioridade). Se o Gerador de Links devolver só um link curto (`mercadolivre.com/sec/...`), abra esse link no navegador e copie o endereço longo em que ele termina. Sem esses parâmetros, só a Shopee posta.
 
 ## Texto para a descrição do grupo
 

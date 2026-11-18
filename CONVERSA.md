@@ -47,7 +47,7 @@ Grupo de ofertas no WhatsApp com links de afiliado. Um robô busca produtos de c
    - cadastrar `SHOPEE_APP_ID` e `SHOPEE_SECRET` nos Secrets do GitHub;
    - rodar `python -m achadinhos categorias` e colocar os ids de categoria em `shopee_categorias` no `config.json`.
 2. **Mercado Livre:** o Jer já é afiliado. Falta:
-   - **Link de exemplo:** gerar um link no **Gerador de Links** do Portal do Afiliado e mandar na conversa (não é senha). O código já sabe copiar os parâmetros de rastreio desse link (`matt_tool`, `matt_word` etc.) para cada produto, pela variável `ML_LINK_PARAMS`. Falta só conferir o formato com o link real e cadastrar a variável. Sem ela, as ofertas do Mercado Livre não são postadas.
+   - **Link de afiliado: pronto (18/11).** O Gerador de Links devolve links curtos `meli.la`. O endereço longo traz `matt_word=arajojefferson39&matt_tool=27581938`, que agora está em `ml_link_params` no `config.json` e é colado em cada produto. O `ref` do link de exemplo é próprio daquele link e não é usado. Conferir no primeiro teste se as vendas aparecem no Portal do Afiliado.
    - **Aplicativo:** criar em https://developers.mercadolivre.com.br (Meus aplicativos > Criar aplicativo; se pedir endereço de retorno, usar `https://github.com`). Depois cadastrar `ML_CLIENT_ID` e `ML_CLIENT_SECRET` nos Secrets do GitHub.
 3. **Z-API:** criar a instância, conectar o chip do grupo pelo QR Code e cadastrar `ZAPI_INSTANCE_ID`, `ZAPI_TOKEN`, `ZAPI_CLIENT_TOKEN` e `WHATSAPP_GRUPO_ID` (o id sai do comando `python -m achadinhos grupos`).
 4. **Juntar o branch ao `main`:** o Claude pode abrir o pull request quando o Jer pedir.
