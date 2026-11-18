@@ -1,0 +1,68 @@
+name: Rotina de ofertas
+
+# O robô fica ligado das 7h às 22h (Brasília), buscando ofertas a cada 30 min
+# e postando uma a cada 5 min. Um job do GitHub dura no máximo 6h, então o dia
+# é dividido em 3 turnos que começam às 7h, 12h e 17h (10h, 15h e 20h UTC).
+# Se um turno atrasar, o seguinte espera na fila (concurrency) e assume em seguida.
+# Liga sozinho quando as chaves da Z-API estiverem nos Secrets. Para pausar, crie a variável ROTINA_LIGADA = nao
+# (Settings > Secrets and variables > Actions > Variables).
+on:
+  schedule:
+    - cron: "0 10 * * *"
+    - cron: "0 15 * * *"
+    - cron: "0 20 * * *"
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: "teste (só mostra 5 legendas no log), buscar, postar ou rodar"
+        type: choice
+        options: [teste, buscar, postar, rodar]
+        default: teste
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rotina-${{ inputs.acao == 'teste' && 'teste' || 'ofertas' }}
+  cancel-in-progress: false
+
+jobs:
+  rodar:
+    # agendado: sempre, a não ser que ROTINA_LIGADA = nao. Manual: sempre.
+    if: vars.ROTINA_LIGADA != 'nao' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      SHOPEE_APP_ID: ${{ secrets.SHOPEE_APP_ID }}
+      SHOPEE_SECRET: ${{ secrets.SHOPEE_SECRET }}
+      ML_LINK_PARAMS: ${{ vars.ML_LINK_PARAMS || secrets.ML_LINK_PARAMS }}
+      ML_LINK_API_URL: ${{ secrets.ML_LINK_API_URL }}
+      ML_LINK_API_KEY: ${{ secrets.ML_LINK_API_KEY }}
+      ZAPI_INSTANCE_ID: ${{ secrets.ZAPI_INSTANCE_ID }}
+      ZAPI_TOKEN: ${{ secrets.ZAPI_TOKEN }}
+      ZAPI_CLIENT_TOKEN: ${{ secrets.ZAPI_CLIENT_TOKEN }}
+      WHATSAPP_GRUPO_ID: ${{ secrets.WHATSAPP_GRUPO_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Rodar
+        run: |
+          ACAO="${{ inputs.acao || 'rodar' }}"
+          echo "ACAO=$ACAO" >> "$GITHUB_ENV"
+          if [ "$ACAO" = "rodar" ]; then
+            # 5h30 por turno, para caber no limite de 6h do GitHub
+            python -m achadinhos rodar --horas 5.5
+          else
+            python -m achadinhos "$ACAO"
+          fi
+      - name: Guardar vitrine, histórico e postagens
+        if: always() && env.ACAO != 'teste'
+        run: |
+          git config user.name "achadinhos-bot"
+          git config user.email "achadinhos-bot@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet && exit 0
+          git commit -m "Rotina: $ACAO"
+          for i in 1 2 3; do git pull --rebase -q && git push && break; sleep 5; done
